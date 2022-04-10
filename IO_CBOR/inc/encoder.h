@@ -3,8 +3,6 @@
 
 #include "templates.h"
 #include <cstdint>
-#include <iostream>
-#include <string>
 
 namespace cborio
 {
@@ -89,7 +87,7 @@ namespace cborio
         void write_type_value(int major_type, unsigned long long value)
         {
             major_type <<= 5;
-            if (value < 0x17)
+            if (value <= 0x17)
             {
                 m_out.put_byte(static_cast<unsigned char>(major_type | value));
             }
