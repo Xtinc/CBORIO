@@ -2,6 +2,7 @@
 #define CBOR_DECODER_H
 
 #include <type_traits>
+#include <string>
 namespace cborio
 {
     enum class DECODER_STATUS
@@ -90,62 +91,5 @@ namespace cborio
         }
         void run();
     };
-
-    template <>
-    unsigned short decoder::get_data()
-    {
-        unsigned short value =
-            static_cast<unsigned short>(m_input.get_byte()) << 8 |
-            static_cast<unsigned short>(m_input.get_byte());
-        return value;
-    }
-    template <>
-    unsigned int decoder::get_data()
-    {
-        unsigned int value =
-            (static_cast<unsigned int>(m_input.get_byte()) << 24) |
-            (static_cast<unsigned int>(m_input.get_byte()) << 16) |
-            (static_cast<unsigned int>(m_input.get_byte()) << 8) |
-            (static_cast<unsigned int>(m_input.get_byte()));
-        return value;
-    }
-    template <>
-    unsigned long long decoder::get_data()
-    {
-        unsigned long long value =
-            (static_cast<unsigned long long>(m_input.get_byte()) << 56) |
-            (static_cast<unsigned long long>(m_input.get_byte()) << 48) |
-            (static_cast<unsigned long long>(m_input.get_byte()) << 40) |
-            (static_cast<unsigned long long>(m_input.get_byte()) << 32) |
-            (static_cast<unsigned long long>(m_input.get_byte()) << 24) |
-            (static_cast<unsigned long long>(m_input.get_byte()) << 16) |
-            (static_cast<unsigned long long>(m_input.get_byte()) << 8) |
-            (static_cast<unsigned long long>(m_input.get_byte()));
-        return value;
-    }
-    template <>
-    float decoder::get_data()
-    {
-        uint8_t value[4] = {0};
-        value[3] = m_input.get_byte();
-        value[2] = m_input.get_byte();
-        value[1] = m_input.get_byte();
-        value[0] = m_input.get_byte();
-        return *(reinterpret_cast<float *>(&value[0]));
-    }
-    template <>
-    double decoder::get_data()
-    {
-        uint8_t value[8] = {0};
-        value[7] = m_input.get_byte();
-        value[6] = m_input.get_byte();
-        value[5] = m_input.get_byte();
-        value[4] = m_input.get_byte();
-        value[3] = m_input.get_byte();
-        value[2] = m_input.get_byte();
-        value[1] = m_input.get_byte();
-        value[0] = m_input.get_byte();
-        return *(reinterpret_cast<double *>(&value[0]));
-    }
 }
 #endif

@@ -1,8 +1,64 @@
-#include "encoder.h"
 #include "decoder.h"
 #include <limits.h>
 
 using namespace cborio;
+
+template <>
+unsigned short decoder::get_data()
+{
+    unsigned short value =
+        static_cast<unsigned short>(m_input.get_byte()) << 8 |
+        static_cast<unsigned short>(m_input.get_byte());
+    return value;
+}
+template <>
+unsigned int decoder::get_data()
+{
+    unsigned int value =
+        (static_cast<unsigned int>(m_input.get_byte()) << 24) |
+        (static_cast<unsigned int>(m_input.get_byte()) << 16) |
+        (static_cast<unsigned int>(m_input.get_byte()) << 8) |
+        (static_cast<unsigned int>(m_input.get_byte()));
+    return value;
+}
+template <>
+unsigned long long decoder::get_data()
+{
+    unsigned long long value =
+        (static_cast<unsigned long long>(m_input.get_byte()) << 56) |
+        (static_cast<unsigned long long>(m_input.get_byte()) << 48) |
+        (static_cast<unsigned long long>(m_input.get_byte()) << 40) |
+        (static_cast<unsigned long long>(m_input.get_byte()) << 32) |
+        (static_cast<unsigned long long>(m_input.get_byte()) << 24) |
+        (static_cast<unsigned long long>(m_input.get_byte()) << 16) |
+        (static_cast<unsigned long long>(m_input.get_byte()) << 8) |
+        (static_cast<unsigned long long>(m_input.get_byte()));
+    return value;
+}
+template <>
+float decoder::get_data()
+{
+    uint8_t value[4] = {0};
+    value[3] = m_input.get_byte();
+    value[2] = m_input.get_byte();
+    value[1] = m_input.get_byte();
+    value[0] = m_input.get_byte();
+    return *(reinterpret_cast<float *>(&value[0]));
+}
+template <>
+double decoder::get_data()
+{
+    uint8_t value[8] = {0};
+    value[7] = m_input.get_byte();
+    value[6] = m_input.get_byte();
+    value[5] = m_input.get_byte();
+    value[4] = m_input.get_byte();
+    value[3] = m_input.get_byte();
+    value[2] = m_input.get_byte();
+    value[1] = m_input.get_byte();
+    value[0] = m_input.get_byte();
+    return *(reinterpret_cast<double *>(&value[0]));
+}
 
 void decoder::run()
 {
@@ -290,6 +346,10 @@ void decoder::run()
                     break;
                 }
             }
+            else
+            {
+                loop = false;
+            }
             break;
         case DECODER_STATUS::STATE_PINT:
             if (m_input.has_bytes(m_curlen))
@@ -327,6 +387,10 @@ void decoder::run()
                     break;
                 }
             }
+            else
+            {
+                loop = false;
+            }
             break;
         case DECODER_STATUS::STATE_NINT:
             if (m_input.has_bytes(m_curlen))
@@ -358,6 +422,10 @@ void decoder::run()
                     break;
                 }
             }
+            else
+            {
+                loop = false;
+            }
             break;
         case DECODER_STATUS::STATE_BYTES_SIZE:
             if (m_input.has_bytes(m_curlen))
@@ -382,6 +450,10 @@ void decoder::run()
                     break;
                 }
             }
+            else
+            {
+                loop = false;
+            }
             break;
         case DECODER_STATUS::STATE_BYTES_DATA:
             if (m_input.has_bytes(m_curlen))
@@ -390,6 +462,10 @@ void decoder::run()
                 m_input.get_bytes(data, m_curlen);
                 m_status = DECODER_STATUS::STATE_TYPE;
                 m_handler.on_bytes(data, m_curlen);
+            }
+            else
+            {
+                loop = false;
             }
             break;
         case DECODER_STATUS::STATE_STRING_SIZE:
@@ -415,6 +491,10 @@ void decoder::run()
                     break;
                 }
             }
+            else
+            {
+                loop = false;
+            }
             break;
         case DECODER_STATUS::STATE_STRING_DATA:
             if (m_input.has_bytes(m_curlen))
@@ -438,6 +518,10 @@ void decoder::run()
                     m_handler.on_error("extra long array");
                     break;
                 }
+            }
+            else
+            {
+                loop = false;
             }
             break;
         case DECODER_STATUS::STATE_ARRAY:
@@ -463,6 +547,10 @@ void decoder::run()
                     break;
                 }
             }
+            else
+            {
+                loop = false;
+            }
             break;
         case DECODER_STATUS::STATE_MAP:
             if (m_input.has_bytes(m_curlen))
@@ -486,6 +574,10 @@ void decoder::run()
                     m_handler.on_error("extra long map");
                     break;
                 }
+            }
+            else
+            {
+                loop = false;
             }
             break;
         case DECODER_STATUS::STATE_ERROR:

@@ -1,153 +1,14 @@
-#include "IO_CBOR/inc/encoder.h"
-#include "IO_CBOR/inc/decoder.h"
+#include "my_class.h"
 #include "gtest/gtest.h"
-#include <iostream>
-#include <string>
-#include <vector>
-#include <list>
-#include <queue>
-#include <type_traits>
-#include <typeinfo>
-#ifndef _MSC_VER
-#include <cxxabi.h>
-#endif
-#include <memory>
-#include <string>
-#include <cstdlib>
-#include <map>
-#include <unordered_map>
-#include <sstream>
 
-template <class T>
-std::string type_name()
-{
-    typedef typename std::remove_reference<T>::type TR;
-    std::unique_ptr<char, void (*)(void *)> own(
-#ifndef _MSC_VER
-        abi::__cxa_demangle(typeid(TR).name(), nullptr,
-                            nullptr, nullptr),
-#else
-        nullptr,
-#endif
-        std::free);
-    std::string r = own != nullptr ? own.get() : typeid(TR).name();
-    if (std::is_const<TR>::value)
-        r += " const";
-    if (std::is_volatile<TR>::value)
-        r += " volatile";
-    if (std::is_lvalue_reference<T>::value)
-        r += "&";
-    else if (std::is_rvalue_reference<T>::value)
-        r += "&&";
-    return r;
-}
-
-struct HexCharStruct
-{
-    unsigned char c;
-    HexCharStruct(unsigned char _c) : c(_c) {}
-};
-
-inline std::ostream &operator<<(std::ostream &o, const HexCharStruct &hs)
-{
-    return (o << std::setw(2) << std::setfill('0') << std::hex << (int)hs.c);
-}
-
-inline HexCharStruct hex(unsigned char _c)
-{
-    return HexCharStruct(_c);
-}
-
-class my_o : public cborio::output
-{
-private:
-public:
-    my_o() {}
-    void put_byte(unsigned char c) override
-    {
-        std::cout << hex(c);
-        return;
-    }
-    void put_bytes(const unsigned char *data, int size) override
-    {
-        for (int i = 0; i < size; ++i)
-        {
-            std::cout << hex(*(data + i));
-        }
-        return;
-    }
-};
-
-class wo_file : public cborio::output
-{
-private:
-    std::vector<unsigned char> m_buffer;
-    // on stack todo
-
-public:
-    wo_file(unsigned int capacity)
-        : m_buffer(capacity, 0){};
-
-    unsigned char *getData()
-    {
-        return m_buffer.data();
-    };
-
-    unsigned int getSize() const
-    {
-        return m_buffer.size();
-    };
-
-    void put_byte(unsigned char value) override
-    {
-        m_buffer.emplace_back(value);
-    }
-
-    void put_bytes(const unsigned char *data, int size) override
-    {
-        for (auto i = 0; i < size; ++i)
-        {
-            m_buffer.emplace_back(*(data + i));
-        }
-    };
-
-    void clear()
-    {
-        m_buffer.clear();
-    }
-};
-
-class ro_file : public cborio::input
-{
-private:
-    unsigned char *m_data;
-    int m_size;
-    int m_offset;
-
-public:
-    ro_file(void *data, int size)
-    {
-        m_data = static_cast<unsigned char *>(data);
-        m_size = size;
-        m_offset = 0;
-    };
-
-    bool has_bytes(int count) override
-    {
-        return m_size - m_offset >= count;
-    }
-
-    unsigned char get_byte() override
-    {
-        return m_data[m_offset++];
-    }
-
-    void get_bytes(void *to, int count)
-    {
-        memcpy(to, m_data + m_offset, count);
-        m_offset += count;
-    }
-};
+#define RO_DECODER_CLS fl.clear();
+#define RO_DECODER_RUN                          \
+    do                                          \
+    {                                           \
+        ro_file ro(fl.getData(), fl.getSize()); \
+        cborio::decoder de(ro, hd);             \
+        de.run();                               \
+    } while (0);
 
 class CBOR_O_TestCase : public ::testing::Test
 {
@@ -166,6 +27,7 @@ public:
     {
     }
     wo_file fl;
+    hd_debug hd;
     cborio::encoder en;
 };
 
@@ -310,11 +172,125 @@ TEST_F(CBOR_O_TestCase, stl_map)
     // A3657465737431831A000BF190187B3A00053CC9657465737432831A00017EB1395B7F393048657465737433831904BC3903DC00
 }
 
-TEST_F(CBOR_I_TestCase, test)
+TEST_F(CBOR_I_TestCase, unsigned_ll)
 {
-    fl.clear();
-    en.write_data(5);
-    ro_file ro(fl.getData(), fl.getSize());
-    cborio::CBORIOHandler hd;
-    cborio::decoder de(ro, hd);
+    RO_DECODER_CLS
+    for (auto i : {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285})
+    {
+        en.write_data(i);
+        std::cout << std::endl;
+    }
+    // 0x1AB2D05E00,0x1B00000069543B2773,0x1B00000FEE240E457A,0x1B060BD73237F24857,0x3B03CFB11003748FA4
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, float_num)
+{
+    RO_DECODER_CLS
+    for (auto i : {0.0754f, 34.12f, 7.986f, -46583.46f, -2742.85f})
+    {
+        en.write_data(i);
+        std::cout << std::endl;
+    }
+    // 0xfa3d9a6b51,0xFA42087AE1,0xFA40FF8D50,0xFAC735F776,0xFAC52B6D9A
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, double_num)
+{
+    RO_DECODER_CLS
+    for (auto i : {0.000754, 34.12, 7.98646471, 4356783996583.46583, -27463278462.8453285})
+    {
+        en.write_data(i);
+        std::cout << std::endl;
+    }
+    // 0xFB3F48B502ABABEAD5,0xFB40410F5C28F5C28F,0xFB401FF223CE106EB8,0xFB428FB3247FF53BBA,0xFBC21993C17DFB619E
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, stl_string)
+{
+    RO_DECODER_CLS
+    for (std::string i : {"0.000754", "3ad4f12", "bhdsf", "0xashdgox", ""})
+    {
+        en.write_data(i);
+        std::cout << std::endl;
+    }
+    en.write_data(std::string("lvaue"));
+    std::cout << std::endl;
+    // 0x68302E303030373534
+    // 0x6733616434663132
+    // 0x656268647366
+    // 0x69307861736864676F78
+    // 0x60
+    // 0x656c76617565
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, char_array)
+{
+    RO_DECODER_CLS
+    for (auto i : {"0.000754", "3ad4f12", "bhdsf", "0xashdgox", ""})
+    {
+        en.write_data(i, sizeof(i));
+        std::cout << std::endl;
+    }
+    char p[10] = "werttt";
+    en.write_data(p, strlen(p) + 1);
+    std::cout << std::endl;
+    std::string str("ceshisdf");
+    en.write_data(str.c_str(), str.length());
+    std::cout << std::endl;
+    en.write_data("lvaue", 5);
+    std::cout << std::endl;
+    // 0xFB3F48B502ABABEAD5,0xFB40410F5C28F5C28F,0xFB401FF223CE106EB8,0xFB428FB3247FF53BBA,0xFBC21993C17DFB619E
+    // 0x66776572747474
+    // 0x686365736869736466
+    // 0x656c76617565
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, stl_list)
+{
+    RO_DECODER_CLS
+    std::vector<int> ls1 = {1, 2, 3, 4, 5};
+    en.write_data(ls1);
+    // 0x850102030405
+    std::cout << std::endl;
+    en.write_data(std::list<double>(3, 5.056));
+    std::cout << std::endl;
+    // 0x83FB4014395810624DD3FB4014395810624DD3FB4014395810624DD3
+    std::deque<std::string> qu = {"cehi", "32846de", "queudbvf", "%^45243**&/n"};
+    en.write_data(qu);
+    std::cout << std::endl;
+    // 0x84646365686967333238343664656871756575646276666C255E34353234332A2A262F6E
+    en.write_data(std::vector<char>{'a', 'b', 'c', 'd'});
+    std::cout << std::endl;
+    // 0x841861186218631864
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, stl_map)
+{
+    RO_DECODER_CLS
+    std::map<int, int> mp1 = {{1, 2}, {2, 2}, {3, 56}};
+    en.write_data(mp1);
+    std::cout << std::endl;
+    // 0xA301020202031838
+    std::unordered_map<std::string, std::string> mp2 = {{"key", "value"}, {"jkfdh", "vfd"}, {"c876rw%^", ""}};
+    const std::unordered_map<std::string, std::string> &pp = mp2;
+    en.write_data(pp);
+    std::cout << std::endl;
+    // 没有顺序，每次都需要在网站上看https://cbor.me/
+    std::vector<int> a1 = {782736, 123, -343242};
+    std::vector<int> a2 = {97969, -23424, -12361};
+    std::vector<int> a3 = {1212, -989, 0};
+    std::map<std::string, std::vector<int>> mp3;
+    mp3.insert(std::make_pair("test1", a1));
+    mp3.insert(std::make_pair("test2", a2));
+    mp3.insert(std::make_pair("test3", a3));
+    en.write_data(mp3);
+    std::cout << std::endl;
+    // A3657465737431831A000BF190187B3A00053CC9657465737432831A00017EB1395B7F393048657465737433831904BC3903DC00
+    RO_DECODER_RUN
 }
