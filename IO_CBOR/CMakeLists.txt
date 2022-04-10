@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.11)
+project(cborio LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+aux_source_directory(src SRCLISTS)
+add_library(${PROJECT_NAME} ${SRCLISTS})
+target_include_directories(${PROJECT_NAME} PUBLIC inc)
