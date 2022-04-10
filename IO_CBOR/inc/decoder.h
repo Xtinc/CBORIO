@@ -10,6 +10,8 @@ namespace cborio
         STATE_TYPE,
         STATE_PINT,
         STATE_NINT,
+        STATE_FLOAT,
+        STATE_DOUBLE,
         STATE_BYTES_SIZE,
         STATE_BYTES_DATA,
         STATE_STRING_SIZE,
@@ -33,6 +35,10 @@ namespace cborio
     {
     public:
         virtual void on_integer(int value){};
+
+        virtual void on_float(float value){};
+
+        virtual void on_double(double value){};
 
         virtual void on_bytes(unsigned char *data, int size){};
 

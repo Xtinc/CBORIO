@@ -160,6 +160,16 @@ public:
         printf("integer: %d\n", value);
     }
 
+    void on_float(float value)
+    {
+        printf("float: %7.3f\n", value);
+    }
+
+    void on_double(double value)
+    {
+        printf("double: %15.7f\n", value);
+    }
+
     void on_bytes(unsigned char *data, int size)
     {
         printf("bytes with size: %d", size);

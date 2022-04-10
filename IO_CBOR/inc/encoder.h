@@ -35,7 +35,7 @@ namespace cborio
         template <typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
         void write_data(T t)
         {
-            return t < 0 ? write_type_value(1, static_cast<unsigned long long>(-t - 1)) : write_type_value(0, static_cast<unsigned long long>(t));
+            return write_float_value(t);
         };
         template <typename T, typename std::enable_if<ISTList<T>::value>::type * = nullptr>
         void write_data(T t)
@@ -83,7 +83,30 @@ namespace cborio
             write_type_value(3, t2);
             m_out.put_bytes(reinterpret_cast<unsigned char *>(const_cast<char *>(t1)), t2);
         }
-
+        void write_float_value(float value)
+        {
+            char *tmp = reinterpret_cast<char *>(&value);
+            m_out.put_byte(static_cast<unsigned char>(7 << 5 | 0x1A));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 3)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 2)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 1)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp)));
+            return;
+        }
+        void write_float_value(double value)
+        {
+            char *tmp = reinterpret_cast<char *>(&value);
+            m_out.put_byte(static_cast<unsigned char>(7 << 5 | 0x1B));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 7)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 6)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 5)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 4)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 3)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 2)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 1)));
+            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp)));
+            return;
+        }
         void write_type_value(int major_type, unsigned long long value)
         {
             major_type <<= 5;
@@ -149,8 +172,6 @@ namespace cborio
             m_out.put_byte(static_cast<unsigned char>(0xf7));
         }
     };
-
-
 }
 
 #endif

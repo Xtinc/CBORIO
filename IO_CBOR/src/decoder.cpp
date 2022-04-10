@@ -1,5 +1,6 @@
 #include "decoder.h"
 #include <limits.h>
+#include <vector>
 
 using namespace cborio;
 
@@ -329,12 +330,12 @@ void decoder::run()
                     else if (minor_type == 0x1A)
                     { // 4 byte
                         m_curlen = 4;
-                        m_status = DECODER_STATUS::STATE_SPECIAL;
+                        m_status = DECODER_STATUS::STATE_FLOAT;
                     }
                     else if (minor_type == 0x1B)
                     { // 8 byte
                         m_curlen = 8;
-                        m_status = DECODER_STATUS::STATE_SPECIAL;
+                        m_status = DECODER_STATUS::STATE_DOUBLE;
                     }
                     else
                     {
@@ -402,7 +403,7 @@ void decoder::run()
                     m_status = DECODER_STATUS::STATE_TYPE;
                     break;
                 case 2:
-                    m_handler.on_integer(-static_cast<int>(get_data<unsigned int>()) - 1);
+                    m_handler.on_integer(-static_cast<int>(get_data<unsigned short>()) - 1);
                     m_status = DECODER_STATUS::STATE_TYPE;
                     break;
                 case 4:
@@ -421,6 +422,28 @@ void decoder::run()
                     m_handler.on_extra_integer(get_data<unsigned long long>() + 1, -1);
                     break;
                 }
+            }
+            else
+            {
+                loop = false;
+            }
+            break;
+        case DECODER_STATUS::STATE_FLOAT:
+            if (m_input.has_bytes(m_curlen))
+            {
+                m_status = DECODER_STATUS::STATE_TYPE;
+                m_handler.on_float(get_data<float>());
+            }
+            else
+            {
+                loop = false;
+            }
+            break;
+        case DECODER_STATUS::STATE_DOUBLE:
+            if (m_input.has_bytes(m_curlen))
+            {
+                m_status = DECODER_STATUS::STATE_TYPE;
+                m_handler.on_float(get_data<double>());
             }
             else
             {
@@ -499,25 +522,11 @@ void decoder::run()
         case DECODER_STATUS::STATE_STRING_DATA:
             if (m_input.has_bytes(m_curlen))
             {
-                switch (m_curlen)
-                {
-                case 1:
-                    m_curlen = m_input.get_byte();
-                    m_status = DECODER_STATUS::STATE_STRING_DATA;
-                    break;
-                case 2:
-                    m_curlen = get_data<unsigned short>();
-                    m_status = DECODER_STATUS::STATE_STRING_DATA;
-                    break;
-                case 4:
-                    m_curlen = get_data<unsigned int>();
-                    m_status = DECODER_STATUS::STATE_STRING_DATA;
-                    break;
-                case 8:
-                    m_status = DECODER_STATUS::STATE_ERROR;
-                    m_handler.on_error("extra long array");
-                    break;
-                }
+                std::vector<unsigned char> tp(m_curlen, 0);
+                m_input.get_bytes(tp.data(), tp.size());
+                m_status = DECODER_STATUS::STATE_TYPE;
+                std::string str((const char *)tp.data(), tp.size());
+                m_handler.on_string(str);
             }
             else
             {
