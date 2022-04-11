@@ -278,3 +278,10 @@ TEST_F(CBOR_I_TestCase, stl_map)
     en.write_data(mp3);
     RO_DECODER_RUN
 }
+
+TEST_F(CBOR_I_TestCase, streami)
+{
+    RO_DECODER_CLS
+    en << std::list<int>(10, 1919);
+    RO_DECODER_RUN
+}

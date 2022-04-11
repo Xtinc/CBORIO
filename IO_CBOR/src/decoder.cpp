@@ -481,10 +481,10 @@ void decoder::run()
         case DECODER_STATUS::STATE_BYTES_DATA:
             if (m_input.has_bytes(m_curlen))
             {
-                unsigned char *data = new unsigned char[m_curlen];
-                m_input.get_bytes(data, m_curlen);
+                std::vector<unsigned char> tp(m_curlen, 0);
+                m_input.get_bytes(tp.data(), m_curlen);
                 m_status = DECODER_STATUS::STATE_TYPE;
-                m_handler.on_bytes(data, m_curlen);
+                m_handler.on_bytes(tp.data(), tp.size());
             }
             else
             {

@@ -9,9 +9,7 @@ namespace cborio
     class output
     {
     public:
-        // virtual unsigned char *data() = 0;
-
-        // virtual unsigned int size() = 0;
+    
         output(){};
 
         virtual void put_byte(unsigned char value) = 0;
@@ -27,6 +25,12 @@ namespace cborio
     public:
         encoder(output &out) : m_out(out){};
         ~encoder(){};
+        template <typename T>
+        encoder &operator<<(T t)
+        {
+            write_data(t);
+            return *this;
+        }
         template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
         void write_data(T t)
         {
