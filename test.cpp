@@ -1,5 +1,6 @@
 #include "my_class.h"
 #include "gtest/gtest.h"
+#include "CRUDE_REFL/crude_reflect.h"
 
 #define RO_DECODER_CLS fl.clear();
 #define RO_DECODER_RUN                          \
@@ -284,4 +285,44 @@ TEST_F(CBOR_I_TestCase, streami)
     RO_DECODER_CLS
     en << std::list<int>(10, 1919);
     RO_DECODER_RUN
+}
+
+struct ReflStructTest
+{
+    int x;
+    int y;
+};
+
+REFL(ReflStructTest,
+     FIELD(x),
+     FIELD(y));
+
+struct Point
+{
+    int x, y;
+};
+
+REFL(Point,
+     FIELD(x),
+     FIELD(y));
+
+struct Rect
+{
+    Point p1, p2;
+    uint32_t color;
+};
+
+REFL(Rect,
+     FIELD(p1),
+     FIELD(p2),
+     FIELD(color));
+
+TEST(CRUDE_REFL, static_test)
+{
+    Rect rect{
+        {0, 0},
+        {8, 9},
+        123353,
+    };
+    dumpObj(rect);
 }
