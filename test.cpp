@@ -1,6 +1,6 @@
 #include "my_class.h"
 #include "gtest/gtest.h"
-#include "CRUDE_REFL/crude_reflect.h"
+#include "IO_CBOR/inc/simple_reflect.h"
 
 #define RO_DECODER_CLS fl.clear();
 #define RO_DECODER_RUN                          \
@@ -324,5 +324,9 @@ TEST(CRUDE_REFL, static_test)
         {8, 9},
         123353,
     };
+    IterateObj(
+        rect, [](const char *name, int depth)
+        { std::cout << "field name:" << name << std::endl; },
+        "", 0);
     dumpObj(rect);
 }
