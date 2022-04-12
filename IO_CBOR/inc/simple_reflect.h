@@ -39,7 +39,7 @@ template <typename T, typename F>
 inline constexpr void refl_foreach(T &&obj, F &&f)
 {
     constexpr auto fields = StructMetaInfo<std::decay_t<T>>();
-    foreach (std::forward<T>(obj),
+    refl_foreach (std::forward<T>(obj),
              fields,
              std::forward<F>(f),
              std::make_index_sequence<std::tuple_size<decltype(fields)>::value>{})
@@ -47,17 +47,17 @@ inline constexpr void refl_foreach(T &&obj, F &&f)
 }
 
 template <typename T, typename F, std::enable_if_t<std::is_class<std::decay_t<T>>::value> * = nullptr>
-inline constexpr void refl_recur_obj(T &&obj, REFL_HANDLER &&hd, const char *fieldname = "", int recur_depth = 0)
+void refl_recur_obj(T &&obj, F &&f, const char *fieldName, int depth)
 {
-    hd(fieldname, recur_depth);
-    refl_foreach(obj, [recur_depth, &f](auto &&fieldname, auto &&value)
-                 { refl_recur_obj(value, f, fieldname, recur_depth + 1); });
+    f(fieldName, depth);
+    refl_foreach (obj, [depth, f](auto &&fieldName, auto &&value)
+             { refl_recur_obj(value, f, fieldName, depth + 1); })
+        ;
 }
 
 template <typename T, typename F, std::enable_if_t<!std::is_class<std::decay_t<T>>::value> * = nullptr>
-inline constexpr void refl_recur_obj(T &&obj, REFL_HANDLER &&hd, const char *fieldname = "", int recur_depth = 0)
+void refl_recur_obj(T &&obj, F &&f, const char *fieldName, int depth)
 {
-    f(fieldname, recur_depth);
+    f(fieldName, depth);
 }
-
 #endif

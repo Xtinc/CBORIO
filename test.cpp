@@ -293,18 +293,13 @@ struct ReflStructTest
     int y;
 };
 
-REFL(ReflStructTest,
-     FIELD(x),
-     FIELD(y));
-
+REFL(ReflStructTest, FIELD(x), FIELD(y));
 struct Point
 {
     int x, y;
 };
 
-REFL(Point,
-     FIELD(x),
-     FIELD(y));
+REFL(Point, FIELD(x), FIELD(y));
 
 struct Rect
 {
@@ -312,10 +307,7 @@ struct Rect
     uint32_t color;
 };
 
-REFL(Rect,
-     FIELD(p1),
-     FIELD(p2),
-     FIELD(color));
+REFL(Rect, FIELD(p1), FIELD(p2), FIELD(color));
 
 TEST(CRUDE_REFL, static_test)
 {
@@ -324,9 +316,10 @@ TEST(CRUDE_REFL, static_test)
         {8, 9},
         123353,
     };
-    IterateObj(
+    refl_recur_obj(
         rect, [](const char *name, int depth)
-        { std::cout << "field name:" << name << std::endl; },
+        {
+        std::cout << "field name:" << name << std::endl;
+        return; },
         "", 0);
-    dumpObj(rect);
 }
