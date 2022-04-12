@@ -1,6 +1,6 @@
 #include "my_class.h"
 #include "gtest/gtest.h"
-#include "CRUDE_REFL/simple_reflect.h"
+#include "CR_REFL/simple_reflect.h"
 
 #define RO_DECODER_CLS fl.clear();
 #define RO_DECODER_RUN                          \
@@ -10,6 +10,68 @@
         cborio::decoder de(ro, hd);             \
         de.run();                               \
     } while (0);
+
+inline void indent(std::ostream &os, int depth)
+{
+    for (int i = 0; i < depth; ++i)
+    {
+        os << "   ";
+    }
+}
+
+template <typename T>
+void tplambda1(std::ostream &os, int depth, const char *fieldname, T &&value)
+{
+    serializePOD(os, value, fieldname, depth + 1);
+}
+
+template <typename T>
+void tplambda2(std::ostream &os, int depth, const char *fieldname, T &&value)
+{
+    deserializePOD(os, value, fieldname);
+}
+
+template <typename T, typename std::enable_if<IsREFL<T>::value>::type * = nullptr>
+void serializePOD(std::ostream &os, const T &obj, const char *fieldname = "", int depth = 0)
+{
+    indent(os, depth);
+    os << fieldname << (*fieldname ? ":{" : "{") << std::endl;
+    refl_foreach(obj, tplambda1);
+    indent(os, depth);
+}
+
+template <typename T, typename std::enable_if<!IsREFL<T>::value>::type * = nullptr>
+void serializePOD(std::ostream &os, const T &obj, const char *fieldname = "", int depth = 0)
+{
+    indent(os, depth);
+    os << fieldname << ":" << obj << std::endl;
+}
+
+template <typename T, typename std::enable_if<IsREFL<T>::value>::type * = nullptr>
+void derserializePOD(std::istream &in, T &obj, const char *fieldname = "")
+{
+    std::string token;
+    in >> token; // eat '{'
+    if (*fieldname)
+    {
+        in >> token; // WARNING: needs check fieldName valid
+    }
+
+    forEach(obj,tplambda2);
+
+    in >> token; // eat '}'
+}
+
+template <typename T, typename std::enable_if<!IsREFL<T>::value>::type * = nullptr>
+void derserializePOD(std::istream &in, T &obj, const char *fieldname = "")
+{
+    if (*fieldname)
+    {
+        std::string token;
+        in >> token;
+    }
+    in >> obj;
+}
 
 class CBOR_O_TestCase : public ::testing::Test
 {
@@ -285,44 +347,4 @@ TEST_F(CBOR_I_TestCase, streami)
     RO_DECODER_CLS
     en << std::list<int>(10, 1919);
     RO_DECODER_RUN
-}
-
-struct ReflStructTest
-{
-    int x;
-    int y;
-};
-
-REFL(ReflStructTest,
-     FIELD(x),
-     FIELD(y));
-
-struct Point
-{
-    int x, y;
-};
-
-REFL(Point,
-     FIELD(x),
-     FIELD(y));
-
-struct Rect
-{
-    Point p1, p2;
-    uint32_t color;
-};
-
-REFL(Rect,
-     FIELD(p1),
-     FIELD(p2),
-     FIELD(color));
-
-TEST(CRUDE_REFL, static_test)
-{
-    Rect rect{
-        {0, 0},
-        {8, 9},
-        123353,
-    };
-    dumpObj(rect);
 }
