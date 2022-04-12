@@ -1,20 +1,23 @@
-#include <iostream>
+#ifndef SIMPLE_REFLECT_H
+#define SIMPLE_REFLECT_H 
+
 #include <tuple>
 #include <typeinfo>
+#include <iostream>
 
 template <typename T>
-inline constexpr auto StructMeta()
+inline constexpr auto StructMetaInfo()
 {
     return std::make_tuple();
 }
 
-#define REFL(Struct, ...)                      \
-    template <>                                \
-    inline constexpr auto StructMeta<Struct>() \
-    {                                          \
-        using T = Struct;                      \
-        return std::make_tuple(                \
-            __VA_ARGS__);                      \
+#define REFL(Struct, ...)                          \
+    template <>                                    \
+    inline constexpr auto StructMetaInfo<Struct>() \
+    {                                              \
+        using T = Struct;                          \
+        return std::make_tuple(                    \
+            __VA_ARGS__);                          \
     };
 
 #define FIELD(field) \
@@ -33,7 +36,7 @@ inline constexpr void foreach (T &&obj, Fields && fields, F && f, std::index_seq
 template <typename T, typename F>
 inline constexpr void foreach (T &&obj, F && f)
 {
-    constexpr auto fields = StructMeta<std::decay_t<T>>();
+    constexpr auto fields = StructMetaInfo<std::decay_t<T>>();
     foreach (std::forward<T>(obj),
              fields,
              std::forward<F>(f),
@@ -69,3 +72,4 @@ void dumpObj(T &&obj, const char *fieldName = "", int depth = 0)
     indent(depth);
     std::cout << "}" << (depth == 0 ? "" : ",") << std::endl;
 }
+#endif
