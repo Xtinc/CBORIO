@@ -92,23 +92,24 @@ namespace
     template <class... T>
     using index_sequence_for = make_index_sequence<sizeof...(T)>;
 }
+
 #endif
 
-#define FIELD_EACH(i, arg)                       \
-    PAIR(arg);                                   \
-    template <typename T>                        \
-    struct FIELD<T, i>                           \
-    {                                            \
-        T &obj;                                  \
-        FIELD(T &obj) : obj(obj) {}              \
-        auto value() -> decltype(obj.STRIP(arg)) \
-        {                                        \
-            return (obj.STRIP(arg));             \
-        }                                        \
-        static constexpr const char *name()      \
-        {                                        \
-            return STRING(STRIP(arg));           \
-        }                                        \
+#define FIELD_EACH(i, arg)                  \
+    PAIR(arg);                              \
+    template <typename T>                   \
+    struct FIELD<T, i>                      \
+    {                                       \
+        T &obj;                             \
+        FIELD(T &obj) : obj(obj) {}         \
+        auto value() -> decltype(auto)      \
+        {                                   \
+            return (obj.STRIP(arg));        \
+        }                                   \
+        static constexpr const char *name() \
+        {                                   \
+            return STRING(STRIP(arg));      \
+        }                                   \
     };
 
 #define DEFINE_STRUCT(st, ...)                                              \
@@ -122,27 +123,36 @@ namespace
     }
 
 template <typename T, typename = void>
-struct IsREFL : std::false_type
-{
-};
-template <typename T>
-struct IsREFL<T, void_t<decltype(&T::_field_count_)>> : std::true_type
+struct IsReflected : std::false_type
 {
 };
 
-template <typename T, typename F, size_t... Ins>
-inline constexpr void refl_foreach(T &&obj, F &&f, index_sequence<Ins...>)
+template <typename T>
+struct IsReflected<T, std::void_t<decltype(&T::_field_count_)>>
+    : std::true_type
 {
-    using TDECAY = typename std::decay<T>::type;
-    (void(f(typename TDECAY::template FIELD<T, Ins>(std::forward<T>(obj)).name(),
-            typename TDECAY::template FIELD<T, Ins>(std::forward<T>(obj)).value())),
-     ...);
+};
+
+template <typename T>
+constexpr static bool IsReflected_v =
+    IsReflected<T>::value;
+
+template <typename T, typename F, size_t... Is>
+inline constexpr void forEach(T &&obj, F &&f, std::index_sequence<Is...>)
+{
+    using TDECAY = std::decay_t<T>;
+    auto d = {
+        (f(typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).name(),
+           typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).value()),
+         Is)...};
 }
 
 template <typename T, typename F>
-inline constexpr void refl_foreach(T &&obj, F &&f)
+inline constexpr void forEach(T &&obj, F &&f)
 {
-    refl_foreach(std::forward<T>(obj), std::forward<F>(f), make_index_sequence<std::decay<T>::_field_count_>{});
+    forEach(std::forward<T>(obj),
+            std::forward<F>(f),
+            std::make_index_sequence<std::decay_t<T>::_field_count_>{});
 }
 
 #endif

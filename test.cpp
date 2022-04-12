@@ -11,68 +11,6 @@
         de.run();                               \
     } while (0);
 
-inline void indent(std::ostream &os, int depth)
-{
-    for (int i = 0; i < depth; ++i)
-    {
-        os << "   ";
-    }
-}
-
-template <typename T>
-void tplambda1(std::ostream &os, int depth, const char *fieldname, T &&value)
-{
-    serializePOD(os, value, fieldname, depth + 1);
-}
-
-template <typename T>
-void tplambda2(std::ostream &os, int depth, const char *fieldname, T &&value)
-{
-    deserializePOD(os, value, fieldname);
-}
-
-template <typename T, typename std::enable_if<IsREFL<T>::value>::type * = nullptr>
-void serializePOD(std::ostream &os, const T &obj, const char *fieldname = "", int depth = 0)
-{
-    indent(os, depth);
-    os << fieldname << (*fieldname ? ":{" : "{") << std::endl;
-    refl_foreach(obj, tplambda1);
-    indent(os, depth);
-}
-
-template <typename T, typename std::enable_if<!IsREFL<T>::value>::type * = nullptr>
-void serializePOD(std::ostream &os, const T &obj, const char *fieldname = "", int depth = 0)
-{
-    indent(os, depth);
-    os << fieldname << ":" << obj << std::endl;
-}
-
-template <typename T, typename std::enable_if<IsREFL<T>::value>::type * = nullptr>
-void derserializePOD(std::istream &in, T &obj, const char *fieldname = "")
-{
-    std::string token;
-    in >> token; // eat '{'
-    if (*fieldname)
-    {
-        in >> token; // WARNING: needs check fieldName valid
-    }
-
-    forEach(obj,tplambda2);
-
-    in >> token; // eat '}'
-}
-
-template <typename T, typename std::enable_if<!IsREFL<T>::value>::type * = nullptr>
-void derserializePOD(std::istream &in, T &obj, const char *fieldname = "")
-{
-    if (*fieldname)
-    {
-        std::string token;
-        in >> token;
-    }
-    in >> obj;
-}
-
 class CBOR_O_TestCase : public ::testing::Test
 {
 public:
@@ -347,4 +285,93 @@ TEST_F(CBOR_I_TestCase, streami)
     RO_DECODER_CLS
     en << std::list<int>(10, 1919);
     RO_DECODER_RUN
+}
+
+void indent(std::ostream &out, int depth)
+{
+    for (int i = 0; i < depth; ++i)
+    {
+        out << "    ";
+    }
+}
+
+template <typename T>
+void serializeObj(std::ostream &out, const T &obj,
+                  const char *fieldName = "", int depth = 0)
+{
+
+    if constexpr (IsReflected_v<T>)
+    {
+        indent(out, depth);
+        out << fieldName << (*fieldName ? ": {" : "{") << std::endl;
+        forEach(obj,
+                [&](auto &&fieldName, auto &&value)
+                { serializeObj(out, value, fieldName, depth + 1); });
+        indent(out, depth);
+        out << "}" << std::endl;
+    }
+    else
+    {
+        indent(out, depth);
+        out << fieldName << ": " << obj << std::endl;
+    }
+}
+
+template <typename T>
+void deserializeObj(std::istream &in, T &obj,
+                    const char *fieldName = "")
+{
+    if constexpr (IsReflected_v<T>)
+    {
+        std::string token;
+        in >> token; // eat '{'
+        if (*fieldName)
+        {
+            in >> token; // WARNING: needs check fieldName valid
+        }
+
+        forEach(obj,
+                [&](auto &&fieldName, auto &&value)
+                { deserializeObj(in, value, fieldName); });
+
+        in >> token; // eat '}'
+    }
+    else
+    {
+        if (*fieldName)
+        {
+            std::string token;
+            in >> token; // WARNING: needs check fieldName valid
+        }
+        in >> obj; // dump value
+    }
+}
+
+DEFINE_STRUCT(Point,
+              (double)x,
+              (double)y);
+
+DEFINE_STRUCT(Rect,
+              (Point)p1,
+              (Point)p2,
+              (uint32_t)color);
+
+TEST(REFL_TEST, refk)
+{
+    std::stringstream result; // serialize result
+    {
+        Rect rect{
+            {1.2, 3.4},
+            {5.6, 7.8},
+            12345678,
+        };
+        serializeObj(result, rect);
+    }
+    std::cout << "serialize rect result:" << std::endl
+              << result.str() << std::endl;
+
+    Rect rect2;
+    deserializeObj(result, rect2);
+    std::cout << "deserialize rect result:" << std::endl;
+    serializeObj(std::cout, rect2);
 }
