@@ -287,66 +287,6 @@ TEST_F(CBOR_I_TestCase, streami)
     RO_DECODER_RUN
 }
 
-void indent(std::ostream &out, int depth)
-{
-    for (int i = 0; i < depth; ++i)
-    {
-        out << "    ";
-    }
-}
-
-template <typename T>
-void serializeObj(std::ostream &out, const T &obj,
-                  const char *fieldName = "", int depth = 0)
-{
-
-    if constexpr (IsReflected_v<T>)
-    {
-        indent(out, depth);
-        out << fieldName << (*fieldName ? ": {" : "{") << std::endl;
-        forEach(obj,
-                [&](auto &&fieldName, auto &&value)
-                { serializeObj(out, value, fieldName, depth + 1); });
-        indent(out, depth);
-        out << "}" << std::endl;
-    }
-    else
-    {
-        indent(out, depth);
-        out << fieldName << ": " << obj << std::endl;
-    }
-}
-
-template <typename T>
-void deserializeObj(std::istream &in, T &obj,
-                    const char *fieldName = "")
-{
-    if constexpr (IsReflected_v<T>)
-    {
-        std::string token;
-        in >> token; // eat '{'
-        if (*fieldName)
-        {
-            in >> token; // WARNING: needs check fieldName valid
-        }
-
-        forEach(obj,
-                [&](auto &&fieldName, auto &&value)
-                { deserializeObj(in, value, fieldName); });
-
-        in >> token; // eat '}'
-    }
-    else
-    {
-        if (*fieldName)
-        {
-            std::string token;
-            in >> token; // WARNING: needs check fieldName valid
-        }
-        in >> obj; // dump value
-    }
-}
-
 DEFINE_STRUCT(Point,
               (double)x,
               (double)y);
