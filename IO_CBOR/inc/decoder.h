@@ -1,7 +1,7 @@
 #ifndef CBOR_DECODER_H
 #define CBOR_DECODER_H
 
-#include <type_traits>
+#include "templates.h"
 #include <string>
 namespace cborio
 {
@@ -34,31 +34,31 @@ namespace cborio
     class CBORIOHandler
     {
     public:
-        virtual void on_integer(int value){};
+        virtual void on_integer(int value) = 0;
 
-        virtual void on_float(float value){};
+        virtual void on_float(float value) = 0;
 
-        virtual void on_double(double value){};
+        virtual void on_double(double value) = 0;
 
-        virtual void on_bytes(unsigned char *data, int size){};
+        virtual void on_bytes(unsigned char *data, int size) = 0;
 
-        virtual void on_string(std::string &str){};
+        virtual void on_string(std::string &str) = 0;
 
-        virtual void on_array(int size){};
+        virtual void on_array(int size) = 0;
 
-        virtual void on_map(int size){};
+        virtual void on_map(int size) = 0;
 
-        virtual void on_tag(unsigned int tag){};
+        virtual void on_tag(unsigned int tag) = 0;
 
-        virtual void on_special(unsigned int code){};
+        virtual void on_special(unsigned int code) = 0;
 
-        virtual void on_bool(bool){};
+        virtual void on_bool(bool) = 0;
 
-        virtual void on_null(){};
+        virtual void on_null() = 0;
 
-        virtual void on_undefined(){};
+        virtual void on_undefined() = 0;
 
-        virtual void on_error(const char *error){};
+        virtual void on_error(const char *error) = 0;
 
         virtual void on_extra_integer(unsigned long long value, int sign)
         {
@@ -81,9 +81,8 @@ namespace cborio
         DECODER_STATUS m_status;
         int m_curlen;
 
-        template <typename RT, typename std::enable_if<std::is_integral<RT>::value>::type * = nullptr>
+        template <typename RT, typename std::enable_if<is_unsigned<RT>::value>::type * = nullptr>
         RT get_data() { return RT(); }
-        // to do: avoid short int long.
         template <typename RT, typename std::enable_if<std::is_floating_point<RT>::value>::type * = nullptr>
         RT get_data() { return RT(); }
 
