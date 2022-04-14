@@ -9,7 +9,7 @@ namespace cborio
     class output
     {
     public:
-            output(){};
+        output(){};
 
         virtual void put_byte(unsigned char value) = 0;
 
@@ -30,10 +30,20 @@ namespace cborio
             write_data(t);
             return *this;
         }
-        template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
+        template <typename T, typename std::enable_if<is_signed<T>::value || is_unsigned<T>::value>::type * = nullptr>
         void write_data(T t)
         {
             return t < 0 ? write_type_value(1, static_cast<unsigned long long>(-t - 1)) : write_type_value(0, static_cast<unsigned long long>(t));
+        }
+        template <typename T, typename std::enable_if<is_boolean<T>::value>::type * = nullptr>
+        void write_data(T t)
+        {
+            return write_bool_value(t);
+        }
+        template <typename T, typename std::enable_if<is_char<T>::value>::type * = nullptr>
+        void write_data(T t)
+        {
+            return write_data(&t, 1);
         }
         template <typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
         void write_data(T t)
@@ -86,94 +96,16 @@ namespace cborio
             write_type_value(3, t2);
             m_out.put_bytes(reinterpret_cast<const unsigned char *>(t1), t2);
         }
-        void write_float_value(float value)
-        {
-            char *tmp = reinterpret_cast<char *>(&value);
-            m_out.put_byte(static_cast<unsigned char>(7 << 5 | 0x1A));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 3)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 2)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 1)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp)));
-            return;
-        }
-        void write_float_value(double value)
-        {
-            char *tmp = reinterpret_cast<char *>(&value);
-            m_out.put_byte(static_cast<unsigned char>(7 << 5 | 0x1B));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 7)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 6)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 5)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 4)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 3)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 2)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp + 1)));
-            m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp)));
-            return;
-        }
-        void write_type_value(int major_type, unsigned long long value)
-        {
-            major_type <<= 5;
-            if (value <= 0x17)
-            {
-                m_out.put_byte(static_cast<unsigned char>(major_type | value));
-            }
-            else if (value <= 0xFF)
-            {
-                m_out.put_byte(static_cast<unsigned char>(major_type | 0x18));
-                m_out.put_byte(static_cast<unsigned char>(value));
-            }
-            else if (value <= 0xFFFF)
-            {
-                m_out.put_byte(static_cast<unsigned char>(major_type | 0x19));
-                m_out.put_byte(static_cast<unsigned char>(value >> 8));
-                m_out.put_byte(static_cast<unsigned char>(value));
-            }
-            else if (value <= 0xFFFFFFFF)
-            {
-                m_out.put_byte(static_cast<unsigned char>(major_type | 0x1A));
-                m_out.put_byte(static_cast<unsigned char>(value >> 24));
-                m_out.put_byte(static_cast<unsigned char>(value >> 16));
-                m_out.put_byte(static_cast<unsigned char>(value >> 8));
-                m_out.put_byte(static_cast<unsigned char>(value));
-            }
-            else
-            {
-                m_out.put_byte(static_cast<unsigned char>(major_type | 0x1B));
-                m_out.put_byte(static_cast<unsigned char>(value >> 56));
-                m_out.put_byte(static_cast<unsigned char>(value >> 48));
-                m_out.put_byte(static_cast<unsigned char>(value >> 40));
-                m_out.put_byte(static_cast<unsigned char>(value >> 32));
-                m_out.put_byte(static_cast<unsigned char>(value >> 24));
-                m_out.put_byte(static_cast<unsigned char>(value >> 16));
-                m_out.put_byte(static_cast<unsigned char>(value >> 8));
-                m_out.put_byte(static_cast<unsigned char>(value));
-            }
-            return;
-        }
-        void write_array_head(int size)
-        {
-            write_type_value(4, static_cast<unsigned int>(size));
-        }
-        void write_null()
-        {
-            m_out.put_byte(static_cast<unsigned char>(0xf6));
-        }
-        void write_map(int size)
-        {
-            write_type_value(5, static_cast<unsigned int>(size));
-        }
-        void write_tag(const unsigned int tag)
-        {
-            write_type_value(6, tag);
-        }
-        void write_special(int special)
-        {
-            write_type_value(7, static_cast<unsigned int>(special));
-        }
-        void write_undefined()
-        {
-            m_out.put_byte(static_cast<unsigned char>(0xf7));
-        }
+        void write_bool_value(bool value);
+        void write_float_value(float value);
+        void write_float_value(double value);
+        void write_type_value(int major_type, unsigned long long value);
+        void write_array_head(int size);
+        void write_null();
+        void write_map(int size);
+        void write_tag(const unsigned int tag);
+        void write_special(int special);
+        void write_undefined();
     };
 }
 

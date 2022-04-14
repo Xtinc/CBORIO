@@ -53,6 +53,13 @@ int main(int argc, char **argv)
     return RUN_ALL_TESTS();
 }
 
+TEST_F(CBOR_O_TestCase, boolean)
+{
+    en.write_data(true);
+    en.write_data(false);
+    EXPECT_STREQ(ios.cstr(),"f5f4");
+}
+
 TEST_F(CBOR_O_TestCase, signed_short)
 {
     for (short i : {2, 14, 25, 56, 241, -21, -124, -5, -5116, -24901})
@@ -153,11 +160,11 @@ TEST_F(CBOR_O_TestCase, stl_list)
     std::deque<std::string> qu = {"cehi", "32846de", "queudbvf", "%^45243**&/n"};
     en.write_data(qu);
     // 0x84646365686967333238343664656871756575646276666C255E34353234332A2A262F6E
-    en.write_data(std::vector<char>{'a', 'b', 'c', 'd'});
-    // 0x841861186218631864
+    en.write_data(std::vector<unsigned char>{'a', 'b', 'c', 'd'});//todo char?unsigned?
+    // 0x844161416241634164
     EXPECT_STREQ(ios.cstr(), "85010203040583fb4014395810624dd3fb4014395810624dd3fb4014395810624dd3"
                              "84646365686967333238343664656871756575646276666c255e34353234332a2a262"
-                             "f6e841861186218631864");
+                             "f6e844161416241634164");
 }
 
 TEST_F(CBOR_O_TestCase, stl_map)
