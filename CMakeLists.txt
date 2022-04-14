@@ -9,7 +9,7 @@ add_compile_options(-Wall -Wextra -pedantic)
 add_subdirectory(IO_CBOR)
 option(ENABLE_UNIT_TESTS "Enable unit tests" ON)
 message(STATUS "Enable testing: ${ENABLE_UNIT_TESTS}")
-option(ENABLE_LCOV "Enable code coverage tests" ON)
+option(ENABLE_LCOV "Enable code coverage tests" OFF)
 message(STATUS "Enable Lcov: ${ENABLE_LCOV}")
 
 if(ENABLE_UNIT_TESTS)
