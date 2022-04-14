@@ -82,6 +82,39 @@ public:
     }
 };
 
+class str_o : public cborio::output
+{
+private:
+    std::string str;
+
+public:
+    void put_byte(unsigned char c) override
+    {
+        std::stringstream ss("");
+        ss << hex(c);
+        str += ss.str();
+        return;
+    }
+    void put_bytes(const unsigned char *data, int size) override
+    {
+        std::stringstream ss("");
+        for (int i = 0; i < size; ++i)
+        {
+            ss << hex(*(data + i));
+        }
+        str += ss.str();
+        return;
+    }
+    void clear()
+    {
+        str = "";
+    }
+    const char *cstr()
+    {
+        return str.c_str();
+    }
+};
+
 class wo_disk_file : public cborio::output, public std::ofstream
 {
 private:
@@ -104,6 +137,7 @@ public:
         write(reinterpret_cast<const char *>(data), size);
     };
 };
+
 class wo_file : public cborio::output
 {
 private:

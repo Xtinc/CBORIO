@@ -9,8 +9,7 @@ namespace cborio
     class output
     {
     public:
-    
-        output(){};
+            output(){};
 
         virtual void put_byte(unsigned char value) = 0;
 
