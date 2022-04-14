@@ -85,7 +85,7 @@ namespace cborio
         void internal_tf(T1 t1, T2 t2, char *by)
         {
             write_type_value(3, t2);
-            m_out.put_bytes(reinterpret_cast<unsigned char *>(const_cast<char *>(t1)), t2);
+            m_out.put_bytes(reinterpret_cast<const unsigned char *>(t1), t2);
         }
         void write_float_value(float value)
         {

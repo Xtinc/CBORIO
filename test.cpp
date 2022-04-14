@@ -1,6 +1,7 @@
 #include "my_class.h"
 #include "gtest/gtest.h"
 #include "CR_REFL/simple_reflect.h"
+#include <random>
 
 #define RO_DECODER_CLS fl.clear();
 #define RO_DECODER_RUN                          \
@@ -11,6 +12,18 @@
         de.run();                               \
     } while (0);
 
+template <typename T>
+void generate_rd(std::vector<T> &ar)
+{
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<T> dis(0.0, 100000.0);
+    for (auto i = 0; i < ar.size(); ++i)
+    {
+        ar[i] = dis(gen);
+    }
+}
 class CBOR_O_TestCase : public ::testing::Test
 {
 public:
@@ -287,22 +300,70 @@ TEST_F(CBOR_I_TestCase, stream_input)
     RO_DECODER_RUN
 }
 
-TEST(CBOR_IO_TestCase, write_diskfile)
+TEST(CBOR_IO_TestCase, write_diskfile_str)
 {
-    std::ifstream in("1.txt", std::ios::in);
-    if (!in.is_open())
-    {
-        return;
-    }
-    wo_disk_file woo("t_cbor.out");
+    std::ofstream ou("s.txt", std::ios::out);
+    wo_disk_file woo("s.cbor");
     cborio::encoder en(woo);
-    std::istream_iterator<std::string> iter(in), eof;
-    while (iter != eof)
+    std::mt19937 gen{std::random_device{}()};
+    std::uniform_int_distribution<int> dis_len(0, 1000);
+    std::uniform_int_distribution<int> dis_char{'a', 'z'};
+    for (int i = 0; i < 10000; ++i)
     {
-        en << *iter;
-        ++iter;
+        std::string str(dis_len(gen), '\0');
+        for (auto &i : str)
+        {
+            i = dis_char(gen);
+        }
+        ou << "s" << str << '\n';
+        en << str;
     }
-    in.close();
+}
+
+TEST(CBOR_IO_TestCase, write_diskfile_float)
+{
+    std::vector<double> data(10000, 0);
+    generate_rd(data);
+    std::ofstream ou("d.txt", std::ios::out);
+    wo_disk_file woo("d.cbor");
+    cborio::encoder en(woo);
+    for (auto &i : data)
+    {
+        ou << "f" << i << " ";
+        en << i;
+    }
+}
+
+TEST(CBOR_IO_TestCase, write_diskfile_int)
+{
+    std::vector<int> data(10000, 0);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dis(0, 100000);
+    for (auto &i : data)
+    {
+        i = dis(gen);
+    }
+    std::ofstream ou("i.txt", std::ios::out);
+    wo_disk_file woo("i.cbor");
+    cborio::encoder en(woo);
+    for (auto &i : data)
+    {
+        ou << "i" << i << " ";
+        en << i;
+    }
+}
+
+TEST(CBOR_IO_TestCase, read_diskfile)
+{
+    ro_disk_file roo("s.cbor");
+    if (roo.is_open())
+    {
+        hd_debug hdb;
+        cborio::decoder de(roo, hdb);
+        de.run();
+        roo.close();
+    }
 }
 
 DEFINE_STRUCT(Point,

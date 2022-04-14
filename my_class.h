@@ -82,28 +82,26 @@ public:
     }
 };
 
-class wo_disk_file : public cborio::output
+class wo_disk_file : public cborio::output, public std::ofstream
 {
 private:
-    std::ofstream os;
-
 public:
     wo_disk_file(const char *filename)
     {
-        os.open(filename, std::ofstream::binary);
+        open(filename, std::ofstream::binary);
     }
     ~wo_disk_file()
     {
-        os.close();
+        close();
     }
     void put_byte(unsigned char value) override
     {
-        os.write(reinterpret_cast<char *>(&value), sizeof(value));
+        write(reinterpret_cast<char *>(&value), sizeof(unsigned char));
     }
 
     void put_bytes(const unsigned char *data, int size) override
     {
-        os.write(reinterpret_cast<const char *>(data), sizeof(data));
+        write(reinterpret_cast<const char *>(data), size);
     };
 };
 class wo_file : public cborio::output
@@ -145,6 +143,41 @@ public:
     }
 };
 
+class ro_disk_file : public cborio::input, public std::ifstream
+{
+private:
+    int m_length;
+    int m_offset;
+
+public:
+    ro_disk_file(const char *filename)
+        : m_length(0), m_offset(0)
+    {
+        open(filename, std::ifstream::binary);
+        if (is_open())
+        {
+            seekg(0, end);
+            m_length = tellg();
+            seekg(0, beg);
+        }
+    }
+    bool has_bytes(int count) override
+    {
+        return m_length - m_offset >= count;
+    }
+    unsigned char get_byte() override
+    {
+        unsigned char a = 0x0;
+        read(reinterpret_cast<char *>(&a), sizeof(unsigned char));
+        ++m_offset;
+        return a;
+    }
+    void get_bytes(void *to, int count)
+    {
+        read(reinterpret_cast<char *>(to), count);
+        m_offset += count;
+    }
+};
 class ro_file : public cborio::input
 {
 private:
