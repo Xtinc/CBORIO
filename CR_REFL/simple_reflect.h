@@ -137,6 +137,11 @@ using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
 #define DEFINE_STRUCT(st, ...)                                              \
     struct st                                                               \
     {                                                                       \
+        friend std::ostream &operator<<(std::ostream &os, st &ss)           \
+        {                                                                   \
+            REFL::serializeObj(os, ss);                                     \
+            return os;                                                      \
+        };                                                                  \
         template <typename, size_t>                                         \
         struct FIELD;                                                       \
         static constexpr size_t _field_count_ = GET_ARG_COUNT(__VA_ARGS__); \
@@ -144,119 +149,122 @@ using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
         (FIELD_EACH, 0, __VA_ARGS__)                                        \
     }
 
-template <typename T, typename = void>
-struct IsReflected : std::false_type
+namespace REFL
 {
-};
-
-template <typename T>
-struct IsReflected<T, void_t<decltype(&T::_field_count_)>>
-    : std::true_type
-{
-};
-
-template <typename T, typename F, size_t... Is>
-inline constexpr void forEach(T &&obj, F &&f, index_sequence<Is...>)
-{
-    using TDECAY = typename std::decay<T>::type;
-    auto d = {
-        (f(typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).name(),
-           typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).value()),
-         Is)...};
-}
-
-template <typename T, typename F>
-inline constexpr void forEach(T &&obj, F &&f)
-{
-    using TP = typename std::decay<T>::type;
-    forEach(std::forward<T>(obj),
-            std::forward<F>(f),
-            make_index_sequence<TP::_field_count_>{});
-}
-
-struct GenericFunctor1;
-struct GenericFunctor2;
-
-template <typename T>
-typename std::enable_if<!IsReflected<T>::value>::type
-serializeObj(std::ostream &out, const T &obj,
-             const char *fieldName = "", int depth = 0)
-{
-    out << fieldName << ":" << depth << std::endl;
-}
-
-template <typename T>
-typename std::enable_if<IsReflected<T>::value>::type
-serializeObj(std::ostream &out, const T &obj,
-             const char *fieldName = "", int depth = 0)
-{
-    out << fieldName << (*fieldName ? ": {" : "{") << std::endl;
-    forEach(obj, GenericFunctor1(out, depth));
-}
-
-struct GenericFunctor1
-{
-private:
-    std::ostream &out;
-    int depth;
-
-public:
-    GenericFunctor1(std::ostream &_os, int _depth)
-        : out(_os), depth(_depth)
+    template <typename T, typename = void>
+    struct IsReflected : std::false_type
     {
-    }
-    template <typename Field, typename Name>
-    void operator()(Field &&field, Name &&name)
-    {
-        serializeObj(out, name, field, depth + 1);
-    }
-};
+    };
 
-template <typename T>
-typename std::enable_if<IsReflected<T>::value>::type
-deserializeObj(std::istream &in, T &obj,
-               const char *fieldName = "")
-{
-    std::string token;
-    in >> token; // eat '{'
-    if (*fieldName)
+    template <typename T>
+    struct IsReflected<T, void_t<decltype(&T::_field_count_)>>
+        : std::true_type
     {
-        in >> token; // WARNING: needs check fieldName valid
+    };
+
+    template <typename T, typename F, size_t... Is>
+    inline constexpr void forEach(T &&obj, F &&f, index_sequence<Is...>)
+    {
+        using TDECAY = typename std::decay<T>::type;
+        auto d = {
+            (f(typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).name(),
+               typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).value()),
+             Is)...};
     }
 
-    forEach(obj, GenericFunctor2(in));
+    template <typename T, typename F>
+    inline constexpr void forEach(T &&obj, F &&f)
+    {
+        using TP = typename std::decay<T>::type;
+        forEach(std::forward<T>(obj),
+                std::forward<F>(f),
+                make_index_sequence<TP::_field_count_>{});
+    }
 
-    in >> token; // eat '}'
-}
+    struct GFunc_out;
+    struct GFunc_in;
 
-template <typename T>
-typename std::enable_if<!IsReflected<T>::value>::type
-deserializeObj(std::istream &in, T &obj,
-               const char *fieldName = "")
-{
-    if (*fieldName)
+    template <typename T>
+    typename std::enable_if<!IsReflected<T>::value>::type
+    serializeObj(std::ostream &out, const T &obj,
+                 const char *fieldName = "", int depth = 0)
+    {
+        out << fieldName << ":" << depth << std::endl;
+    }
+
+    template <typename T>
+    typename std::enable_if<IsReflected<T>::value>::type
+    serializeObj(std::ostream &out, const T &obj,
+                 const char *fieldName = "", int depth = 0)
+    {
+        out << fieldName << (*fieldName ? ": {" : "{") << std::endl;
+        forEach(obj, GFunc_out(out, depth));
+    }
+
+    struct GFunc_out
+    {
+    private:
+        std::ostream &out;
+        int depth;
+
+    public:
+        GFunc_out(std::ostream &_os, int _depth)
+            : out(_os), depth(_depth)
+        {
+        }
+        template <typename Field, typename Name>
+        void operator()(Field &&field, Name &&name)
+        {
+            serializeObj(out, name, field, depth + 1);
+        }
+    };
+
+    template <typename T>
+    typename std::enable_if<IsReflected<T>::value>::type
+    deserializeObj(std::istream &in, T &obj,
+                   const char *fieldName = "")
     {
         std::string token;
-        in >> token; // WARNING: needs check fieldName valid
+        in >> token; // eat '{'
+        if (*fieldName)
+        {
+            in >> token; // WARNING: needs check fieldName valid
+        }
+
+        forEach(obj, GFunc_in(in));
+
+        in >> token; // eat '}'
     }
-    in >> obj; // dump value
+
+    template <typename T>
+    typename std::enable_if<!IsReflected<T>::value>::type
+    deserializeObj(std::istream &in, T &obj,
+                   const char *fieldName = "")
+    {
+        if (*fieldName)
+        {
+            std::string token;
+            in >> token; // WARNING: needs check fieldName valid
+        }
+        in >> obj; // dump value
+    }
+
+    struct GFunc_in
+    {
+    private:
+        std::istream &in;
+
+    public:
+        GFunc_in(std::istream &_is)
+            : in(_is)
+        {
+        }
+        template <typename Field, typename Name>
+        void operator()(Field &&field, Name &&name)
+        {
+            deserializeObj(in, name, field);
+        }
+    };
 }
-
-struct GenericFunctor2
-{
-private:
-    std::istream &in;
-
-public:
-    GenericFunctor2(std::istream &_is)
-        : in(_is)
-    {
-    }
-    template <typename Field, typename Name>
-    void operator()(Field &&field, Name &&name)
-    {
-        deserializeObj(in, name, field);
-    }
-};
 
 #endif
