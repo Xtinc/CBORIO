@@ -10,7 +10,6 @@
 #if __cplusplus < 201703L
 namespace
 {
-    // some functions in STL
     template <typename... T>
     struct make_void
     {
@@ -18,6 +17,16 @@ namespace
     };
     template <typename... T>
     using void_t = typename make_void<T...>::type;
+}
+#else
+template <typename T>
+using void_t = std::void_t<T>;
+#endif
+
+#if __cplusplus < 201402L
+namespace
+{
+    // some functions in STL
 
     template <class T, T... Ints>
     class integer_sequence
@@ -93,24 +102,36 @@ namespace
     template <class... T>
     using index_sequence_for = make_index_sequence<sizeof...(T)>;
 }
+#else
+template <std::size_t... Inds>
+using index_sequence = std::integer_sequence<std::size_t, Inds...>;
+
+template <class T, T N>
+using make_integer_sequence = std::make_integer_sequence<T, N>;
+
+template <std::size_t N>
+using make_index_sequence = std::make_integer_sequence<std::size_t, N>;
+
+template <class... T>
+using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
 
 #endif
 
-#define FIELD_EACH(i, arg)                       \
-    PAIR(arg);                                   \
-    template <typename T>                        \
-    struct FIELD<T, i>                           \
-    {                                            \
-        T &obj;                                  \
-        FIELD(T &obj) : obj(obj) {}              \
-        auto value() -> decltype(obj.STRIP(arg)) \
-        {                                        \
-            return (obj.STRIP(arg));             \
-        }                                        \
-        static constexpr const char *name()      \
-        {                                        \
-            return STRING(STRIP(arg));           \
-        }                                        \
+#define FIELD_EACH(i, arg)                             \
+    _REFL_PAIR(arg);                                   \
+    template <typename T>                              \
+    struct FIELD<T, i>                                 \
+    {                                                  \
+        T &obj;                                        \
+        FIELD(T &obj) : obj(obj) {}                    \
+        auto value() -> decltype(obj._REFL_STRIP(arg)) \
+        {                                              \
+            return (obj._REFL_STRIP(arg));             \
+        }                                              \
+        static constexpr const char *name()            \
+        {                                              \
+            return _REFL_STRING(_REFL_STRIP(arg));     \
+        }                                              \
     };
 
 #define DEFINE_STRUCT(st, ...)                                              \
@@ -119,7 +140,7 @@ namespace
         template <typename, size_t>                                         \
         struct FIELD;                                                       \
         static constexpr size_t _field_count_ = GET_ARG_COUNT(__VA_ARGS__); \
-        PASTE(REPEAT_, GET_ARG_COUNT(__VA_ARGS__))                          \
+        _REFL_PASTE(_RFEL_REPEAT_, GET_ARG_COUNT(__VA_ARGS__))              \
         (FIELD_EACH, 0, __VA_ARGS__)                                        \
     }
 
