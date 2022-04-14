@@ -280,11 +280,29 @@ TEST_F(CBOR_I_TestCase, stl_map)
     RO_DECODER_RUN
 }
 
-TEST_F(CBOR_I_TestCase, streami)
+TEST_F(CBOR_I_TestCase, stream_input)
 {
     RO_DECODER_CLS
     en << std::list<int>(10, 1919);
     RO_DECODER_RUN
+}
+
+TEST(CBOR_IO_TestCase, write_diskfile)
+{
+    std::ifstream in("1.txt", std::ios::in);
+    if (!in.is_open())
+    {
+        return;
+    }
+    wo_disk_file woo("t_cbor.out");
+    cborio::encoder en(woo);
+    std::istream_iterator<std::string> iter(in), eof;
+    while (iter != eof)
+    {
+        en << *iter;
+        ++iter;
+    }
+    in.close();
 }
 
 DEFINE_STRUCT(Point,

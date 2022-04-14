@@ -114,5 +114,21 @@ namespace cborio
         using Tag = char *;
     };
 
+    template <typename T>
+    struct is_unsigned : public std::false_type
+    {
+    };
+    template <>
+    struct is_unsigned<unsigned short> : public std::true_type
+    {
+    };
+    template <>
+    struct is_unsigned<unsigned int> : public std::true_type
+    {
+    };
+    template <>
+    struct is_unsigned<unsigned long long> : public std::true_type
+    {
+    };
 }
 #endif

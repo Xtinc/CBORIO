@@ -2,6 +2,7 @@
 #define MY_CLASS_H
 
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <cstring>
 #include <string>
@@ -81,6 +82,30 @@ public:
     }
 };
 
+class wo_disk_file : public cborio::output
+{
+private:
+    std::ofstream os;
+
+public:
+    wo_disk_file(const char *filename)
+    {
+        os.open(filename, std::ofstream::binary);
+    }
+    ~wo_disk_file()
+    {
+        os.close();
+    }
+    void put_byte(unsigned char value) override
+    {
+        os.write(reinterpret_cast<char *>(&value), sizeof(value));
+    }
+
+    void put_bytes(const unsigned char *data, int size) override
+    {
+        os.write(reinterpret_cast<const char *>(data), sizeof(data));
+    };
+};
 class wo_file : public cborio::output
 {
 private:
