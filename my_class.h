@@ -230,7 +230,12 @@ public:
 
     void on_bytes(unsigned char *data, int size)
     {
-        printf("bytes with size: %d", size);
+        printf("bytes with size %d: ", size);
+        for (int i = 0; i < size; ++i)
+        {
+            printf("%2x", *(data + i));
+        }
+        printf("\n");
     }
 
     void on_string(std::string &str)

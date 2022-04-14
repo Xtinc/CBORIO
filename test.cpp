@@ -19,7 +19,7 @@ void generate_rd(std::vector<T> &ar)
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<T> dis(0.0, 100000.0);
-    for (auto i = 0; i < ar.size(); ++i)
+    for (size_t i = 0; i < ar.size(); ++i)
     {
         ar[i] = dis(gen);
     }

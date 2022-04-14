@@ -166,10 +166,13 @@ namespace REFL
     inline constexpr void forEach(T &&obj, F &&f, index_sequence<Is...>)
     {
         using TDECAY = typename std::decay<T>::type;
-        auto d = {
+        // tricky
+        (void)std::initializer_list<size_t>
+        {
             (f(typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).name(),
                typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).value()),
-             Is)...};
+             Is)...
+        };
     }
 
     template <typename T, typename F>
@@ -186,7 +189,7 @@ namespace REFL
 
     template <typename T>
     typename std::enable_if<!IsReflected<T>::value>::type
-    serializeObj(std::ostream &out, const T &obj,
+    serializeObj(std::ostream &out, const T &,
                  const char *fieldName = "", int depth = 0)
     {
         out << fieldName << ":" << depth << std::endl;

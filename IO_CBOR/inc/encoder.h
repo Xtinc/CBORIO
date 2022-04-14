@@ -35,12 +35,12 @@ namespace cborio
         void write_data(T t)
         {
             return t < 0 ? write_type_value(1, static_cast<unsigned long long>(-t - 1)) : write_type_value(0, static_cast<unsigned long long>(t));
-        };
+        }
         template <typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
         void write_data(T t)
         {
             return write_float_value(t);
-        };
+        }
         template <typename T, typename std::enable_if<ISTList<T>::value>::type * = nullptr>
         void write_data(T t)
         {
@@ -72,17 +72,17 @@ namespace cborio
         {
             using internal_T = typename std::decay<T>::type;
             return internal_tf(t, s, typename CharDispatch<internal_T>::Tag{});
-        };
+        }
 
     private:
         template <typename T1, typename T2>
-        void internal_tf(T1 t1, T2 t2, unsigned char *by)
+        void internal_tf(T1 t1, T2 t2, unsigned char *)
         {
             write_type_value(2, t2);
             m_out.put_bytes(t1, t2);
         }
         template <typename T1, typename T2>
-        void internal_tf(T1 t1, T2 t2, char *by)
+        void internal_tf(T1 t1, T2 t2, char *)
         {
             write_type_value(3, t2);
             m_out.put_bytes(reinterpret_cast<const unsigned char *>(t1), t2);

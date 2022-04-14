@@ -2,8 +2,8 @@
 #define SIMPLE_MACRO_H
 
 #define PP_THIRD_ARG(a, b, c, ...) c
-#define VA_OPT_SUPPORTED_I(...) PP_THIRD_ARG(__VA_OPT__(, ), 1, 0, )
-#define VA_OPT_SUPPORTED VA_OPT_SUPPORTED_I(?)
+//#define VA_OPT_SUPPORTED_I(...) PP_THIRD_ARG(__VA_OPT__(, ), 1, 0, )
+//#define VA_OPT_SUPPORTED VA_OPT_SUPPORTED_I(?)
 
 // Traditional MSVC requires a special EXPAND phase
 #if (defined(_MSC_VER) && !defined(_MSVC_TRADITIONAL)) || \
