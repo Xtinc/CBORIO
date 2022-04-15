@@ -256,6 +256,7 @@ TEST_F(CBOR_I_TestCase, stl_string)
         en.write_data(i);
     }
     en.write_data(std::string("lvaue"));
+    en << "adwihduihiuwfd";//todo char* strlen
     RO_DECODER_RUN
 }
 

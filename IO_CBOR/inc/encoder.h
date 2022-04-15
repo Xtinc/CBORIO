@@ -30,6 +30,11 @@ namespace cborio
             write_data(t);
             return *this;
         }
+        template <typename T, typename std::enable_if<is_charptr<typename std::decay<T>::type>::value>::type * = nullptr>
+        void write_data(T t)
+        {
+            return write_data(t, strlen(t));
+        }
         template <typename T, typename std::enable_if<is_signed<T>::value || is_unsigned<T>::value>::type * = nullptr>
         void write_data(T t)
         {

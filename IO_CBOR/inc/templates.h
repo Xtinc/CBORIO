@@ -173,8 +173,21 @@ namespace cborio
     struct is_char<char> : public std::true_type
     {
     };
-        template <>
+    template <>
     struct is_char<unsigned char> : public std::true_type
+    {
+    };
+
+    template <typename T>
+    struct is_charptr : public std::false_type
+    {
+    };
+    template <>
+    struct is_charptr<char *> : public std::true_type
+    {
+    };
+    template <>//todo char* should be str or unsigned?
+    struct is_charptr<const char *> : public std::true_type
     {
     };
 }
