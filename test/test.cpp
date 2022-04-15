@@ -1,6 +1,6 @@
 #include "my_class.h"
 #include "gtest/gtest.h"
-#include "CR_REFL/simple_reflect.h"
+#include "simple_reflect.h"
 #include <random>
 
 #define RO_DECODER_CLS fl.clear();
@@ -256,7 +256,7 @@ TEST_F(CBOR_I_TestCase, stl_string)
         en.write_data(i);
     }
     en.write_data(std::string("lvaue"));
-    en << "adwihduihiuwfd";//todo char* strlen
+    en << "adwihduihiuwfd"; // todo char* strlen
     RO_DECODER_RUN
 }
 

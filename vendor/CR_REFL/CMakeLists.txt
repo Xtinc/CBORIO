@@ -1,0 +1,5 @@
+set(SUBPRJ "REFL")
+message(STATUS "---------------------------")
+message(STATUS "Current : ${SUBPRJ}")
+add_library(${SUBPRJ} INTERFACE)
+target_include_directories(${SUBPRJ} INTERFACE inc)

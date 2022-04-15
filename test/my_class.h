@@ -19,8 +19,8 @@
 #include <map>
 #include <unordered_map>
 #include <sstream>
-#include "IO_CBOR/inc/encoder.h"
-#include "IO_CBOR/inc/decoder.h"
+#include "encoder.h"
+#include "decoder.h"
 
 template <class T>
 std::string type_name()
