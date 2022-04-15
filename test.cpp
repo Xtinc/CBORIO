@@ -3,7 +3,7 @@
 #include "CR_REFL/simple_reflect.h"
 #include <random>
 
-#define RO_DECODER_CLS fl.clear();
+#define RO_DECODER_CLS 
 #define RO_DECODER_RUN                          \
     do                                          \
     {                                           \
@@ -57,7 +57,7 @@ TEST_F(CBOR_O_TestCase, boolean)
 {
     en.write_data(true);
     en.write_data(false);
-    EXPECT_STREQ(ios.cstr(),"f5f4");
+    EXPECT_STREQ(ios.cstr(), "f5f4");
 }
 
 TEST_F(CBOR_O_TestCase, signed_short)
@@ -134,6 +134,16 @@ TEST_F(CBOR_O_TestCase, stl_string)
     // 0x656c76617565
 }
 
+TEST_F(CBOR_O_TestCase, byte_array)
+{
+    std::vector<unsigned char> tp{0x80, 0x81, 0x82, 0x83, 0xFF};
+    for (auto &i : tp)
+    {
+        en.write_data(i);
+    }
+    EXPECT_STREQ(ios.cstr(), "418041814182418341ff");
+}
+
 TEST_F(CBOR_O_TestCase, char_array)
 {
 
@@ -160,7 +170,7 @@ TEST_F(CBOR_O_TestCase, stl_list)
     std::deque<std::string> qu = {"cehi", "32846de", "queudbvf", "%^45243**&/n"};
     en.write_data(qu);
     // 0x84646365686967333238343664656871756575646276666C255E34353234332A2A262F6E
-    en.write_data(std::vector<unsigned char>{'a', 'b', 'c', 'd'});//todo char?unsigned?
+    en.write_data(std::vector<unsigned char>{'a', 'b', 'c', 'd'}); // todo char?unsigned?
     // 0x844161416241634164
     EXPECT_STREQ(ios.cstr(), "85010203040583fb4014395810624dd3fb4014395810624dd3fb4014395810624dd3"
                              "84646365686967333238343664656871756575646276666c255e34353234332a2a262"
@@ -246,6 +256,14 @@ TEST_F(CBOR_I_TestCase, stl_string)
         en.write_data(i);
     }
     en.write_data(std::string("lvaue"));
+    RO_DECODER_RUN
+}
+
+TEST_F(CBOR_I_TestCase, byte_array)
+{
+    RO_DECODER_CLS
+    std::vector<unsigned char> tp{0xFF, 0XFE, 0XFD, 0XFC, 0XFB, 0XEA};
+    en.write_data(tp);
     RO_DECODER_RUN
 }
 

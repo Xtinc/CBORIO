@@ -16,6 +16,7 @@ void encoder::write_float_value(float value)
     m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp)));
     return;
 }
+
 void encoder::write_float_value(double value)
 {
     char *tmp = reinterpret_cast<char *>(&value);
@@ -30,6 +31,7 @@ void encoder::write_float_value(double value)
     m_out.put_byte(*(reinterpret_cast<uint8_t *>(tmp)));
     return;
 }
+
 void encoder::write_type_value(int major_type, unsigned long long value)
 {
     major_type <<= 5;
@@ -70,26 +72,32 @@ void encoder::write_type_value(int major_type, unsigned long long value)
     }
     return;
 }
+
 void encoder::write_array_head(int size)
 {
     write_type_value(4, static_cast<unsigned int>(size));
 }
+
 void encoder::write_null()
 {
     m_out.put_byte(static_cast<unsigned char>(0xf6));
 }
+
 void encoder::write_map(int size)
 {
     write_type_value(5, static_cast<unsigned int>(size));
 }
+
 void encoder::write_tag(const unsigned int tag)
 {
     write_type_value(6, tag);
 }
+
 void encoder::write_special(int special)
 {
     write_type_value(7, static_cast<unsigned int>(special));
 }
+
 void encoder::write_undefined()
 {
     m_out.put_byte(static_cast<unsigned char>(0xf7));
