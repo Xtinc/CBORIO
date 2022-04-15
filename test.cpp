@@ -3,7 +3,7 @@
 #include "CR_REFL/simple_reflect.h"
 #include <random>
 
-#define RO_DECODER_CLS 
+#define RO_DECODER_CLS fl.clear();
 #define RO_DECODER_RUN                          \
     do                                          \
     {                                           \
@@ -291,6 +291,10 @@ TEST_F(CBOR_I_TestCase, stl_list)
     std::deque<std::string> qu = {"cehi", "32846de", "queudbvf", "%^45243**&/n"};
     en.write_data(qu);
     en.write_data(std::vector<char>{'a', 'b', 'c', 'd'});
+    unsigned char *ele = new unsigned char[99];
+    memset(ele, 0xff, 99);
+    en.write_data(ele, 99);
+    delete[] ele;
     RO_DECODER_RUN
 }
 
@@ -310,7 +314,18 @@ TEST_F(CBOR_I_TestCase, stl_map)
     mp3.insert(std::make_pair("test2", a2));
     mp3.insert(std::make_pair("test3", a3));
     en.write_data(mp3);
+    std::map<int, std::map<int, int>> mp4;
+    mp4.emplace(1, mp1);
+    mp4.emplace(-99, mp1);
+    en.write_data(mp4);
+    std::map<double, double> mp5;
+    for (int i = 0; i < 100; ++i)
+    {
+        mp5.emplace(0.25 * i, 0.75 * i * i);
+    }
+    en << mp5;
     RO_DECODER_RUN
+    // todo: very large nint?
 }
 
 TEST_F(CBOR_I_TestCase, stream_input)
