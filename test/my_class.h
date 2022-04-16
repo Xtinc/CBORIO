@@ -215,14 +215,14 @@ public:
 class ro_file : public cborio::input
 {
 private:
-    unsigned char *m_data;
+    const unsigned char *m_data;
     int m_size;
     int m_offset;
 
 public:
-    ro_file(void *data, int size)
+    ro_file(const unsigned char *data, int size)
     {
-        m_data = static_cast<unsigned char *>(data);
+        m_data = data;
         m_size = size;
         m_offset = 0;
     };

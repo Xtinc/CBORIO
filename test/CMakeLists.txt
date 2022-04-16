@@ -9,9 +9,12 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
         message(FATAL_ERROR "Failed to find required depedency: gtest.")
     endif()
     include(GoogleTest)
-    add_executable(${SUBPRJ} test.cpp)
+    add_executable(${SUBPRJ} cbor_test.cpp)
     target_link_libraries(${SUBPRJ} PUBLIC CBOR REFL GTest::gtest)
     gtest_discover_tests(${SUBPRJ})
+    add_executable(bag_test bag_test.cpp)
+    target_link_libraries(bag_test BAGREC GTest::gtest)
+    gtest_discover_tests(bag_test)
     if(ENABLE_LCOV)
         message(STATUS "Enable Lcov in ${SUBPRJ}")
         message(STATUS "-- lcov Configure")
@@ -22,10 +25,11 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
         if(CMAKE_BUILD_TYPE MATCHES Debug)
             include(CodeCoverage.cmake)
             APPEND_COVERAGE_COMPILER_FLAGS()
-            setup_target_for_coverage_lcov(NAME coverage 
+            setup_target_for_coverage_lcov(
+            NAME coverage 
             EXECUTABLE ctest test 
             EXCLUDE "/usr/*" 
-            DEPENDENCIES ${SUBPRJ})
+            DEPENDENCIES ${SUBPRJ} bag_test)
         endif()
     endif()
 endif()

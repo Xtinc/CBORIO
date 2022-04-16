@@ -2,7 +2,7 @@
 #define CBOR_DECODER_H
 
 #include "templates.h"
-#include <string>
+
 namespace cborio
 {
     enum class DECODER_STATUS
