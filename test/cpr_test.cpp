@@ -29,7 +29,55 @@ std::unique_ptr<uint8_t> readEnwik8(int64_t &len)
     return buf;
 }
 
-TEST(CPR_TEST, huffman_encode)
+TEST(BITWISE_TestCase, bit_reader)
+{
+    std::vector<unsigned char> con;
+    con.emplace_back(0xff);
+    con.emplace_back(0xfe);
+    con.emplace_back(0xfd);
+    con.emplace_back(0xfc);
+    // 0xfffefdfc=4,294,901,244
+    cborio::BitReader btr(con.data(), con.data() + con.size());
+    EXPECT_EQ(4294901244, btr.bits());
+    EXPECT_EQ(1, btr.readBit());
+    // 0xFFFDFBF8=4,294,835,192
+    EXPECT_EQ(4294835192, btr.bits());
+    EXPECT_EQ(127, btr.readBits(7));
+    // 0x fefdfc00=4,278,057,984
+    EXPECT_EQ(4278057984, btr.bits());
+    EXPECT_EQ(33422328, btr.readBits(25));
+    EXPECT_EQ(0, btr.bits());
+}
+
+TEST(BITWISE_TestCase, bit_writer)
+{
+    std::vector<unsigned char> con(4, 0);
+    cborio::BitWriter btw(con.data());
+    for (auto i = 0; i < 8; ++i)
+    {
+        btw.writeBit(11); // 0 or nonzero.
+    }
+    EXPECT_EQ(con[0], 0xff);
+    btw.writeBits(0xfefdfc, 24);
+    EXPECT_EQ(con[1], 0xfe);
+    EXPECT_EQ(con[2], 0xfd);
+    EXPECT_EQ(con[3], 0xfc);
+}
+
+TEST(BITWISE_TestCase, bit_io)
+{
+    uint32_t tmp = 0;
+    auto ptr = reinterpret_cast<uint8_t *>(&tmp);
+    cborio::BitWriter btw(ptr);
+    btw.writeBits(0x000000ff, 32);
+    // 4278190080
+    EXPECT_EQ(tmp, 4278190080);
+    cborio::BitReader btr(ptr, ptr + sizeof(tmp));
+    EXPECT_EQ(255, btr.bits());
+    EXPECT_EQ(255, btr.readBits(32));
+}
+
+TEST(HUFFMAN_TEST, huffman_encode)
 {
     int64_t len;
     std::unique_ptr<uint8_t> buf = readEnwik8(len);

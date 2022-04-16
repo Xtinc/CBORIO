@@ -46,7 +46,8 @@ int BitReader::readBit()
 
 int BitReader::readBits(int n)
 {
-    int r = (m_bits >> 1) >> (31 - n);
+    // m_bits>>1>>(31-n)
+    int r = m_bits >> (32 - n);
     m_bits <<= n;
     m_pos += n;
     return r;
@@ -102,7 +103,7 @@ int64_t BitWriter::finish()
         ++m_cur;
         m_pos = 0;
     }
-    return m_cur - start_;
+    return m_cur - m_start;
 }
 
 void BitWriter::flush()

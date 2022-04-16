@@ -37,8 +37,6 @@ namespace cborio
         void refill();
         void byteAlign();
 
-        uint8_t *current() const { return m_cur; }
-        uint8_t *end() const { return m_end; }
         uint32_t bits() const { return m_bits; }
         int position() const { return m_pos; }
         uint8_t *cursor() const
@@ -50,14 +48,14 @@ namespace cborio
     class BitWriter
     {
     private:
-        uint8_t *start_;
+        uint8_t *m_start;
         uint8_t *m_cur;
         uint32_t m_bits;
         int m_pos;
 
     public:
         BitWriter(uint8_t *buffer)
-            : start_(buffer),
+            : m_start(buffer),
               m_cur(buffer),
               m_bits(0),
               m_pos(0)
