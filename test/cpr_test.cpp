@@ -16,37 +16,6 @@ int main(int argc, char **argv)
     return RUN_ALL_TESTS();
 }
 
-int64_t HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out)
-{
-    uint8_t *out_start = out;
-    int64_t chunk_size = 1 << 18;
-    for (int64_t start = 0; start < len; start += chunk_size)
-    {
-        int64_t remaining = std::min(chunk_size, len - start);
-        uint8_t *marker = out;
-        out += 3;
-
-        cborio::HuffmanEncoder encoder(out);
-        for (int64_t i = 0; i < remaining; ++i)
-        {
-            encoder.scan(buf[i]);
-        }
-        encoder.buildTable();
-        for (int64_t i = 0; i < remaining; ++i)
-        {
-            encoder.encode(buf[i]);
-        }
-        int64_t chunk_written = encoder.finish();
-        marker[0] = chunk_written & 0xff;
-        marker[1] = (chunk_written >> 8) & 0xff;
-        marker[2] = (chunk_written >> 16) & 0xff;
-
-        buf += remaining;
-        out += chunk_written;
-    }
-    return out - out_start;
-}
-
 std::unique_ptr<uint8_t> readEnwik8(int64_t &len)
 {
     FILE *f = fopen("enwik8", "r");
@@ -60,7 +29,7 @@ std::unique_ptr<uint8_t> readEnwik8(int64_t &len)
     return buf;
 }
 
-TEST(cpr_test, huffman_encode)
+TEST(CPR_TEST, huffman_encode)
 {
     int64_t len;
     std::unique_ptr<uint8_t> buf = readEnwik8(len);
@@ -75,7 +44,7 @@ TEST(cpr_test, huffman_encode)
         const int kIters = 1;
         for (int i = 0; i < kIters; ++i)
         {
-            encoded_size = HuffmanCompress(buf.get(), len, out.get());
+            encoded_size = cborio::HuffmanCompress(buf.get(), len, out.get());
         }
         double elapsed = timer.elapsed() / 1000;
         printf("Encoded %ld into %ld bytes\n", len, encoded_size);

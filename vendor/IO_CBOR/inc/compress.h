@@ -90,18 +90,10 @@ namespace cborio
         uint8_t m_len[256];
         BitWriter m_writer;
 
-        struct Comparator
-        {
-            bool operator()(const Node *l, const Node *r)
-            {
-                return l->freq > r->freq;
-            }
-        };
-
     public:
         HuffmanEncoder(uint8_t *buffer, int max = 256)
-            : m_writer(buffer),
-              max_symbols(max)
+            : max_symbols(max),
+              m_writer(buffer)
         {
             for (int i = 0; i < max_symbols; ++i)
             {
@@ -131,5 +123,6 @@ namespace cborio
         void walk(Node *n, int level);
     };
 
+    int64_t HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out);
 }
 #endif

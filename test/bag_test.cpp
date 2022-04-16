@@ -8,6 +8,37 @@ int main(int argc, char **argv)
     return RUN_ALL_TESTS();
 }
 
+DEFINE_STRUCT(Point,
+              (double)x,
+              (double)y);
+DEFINE_STRUCT(Rect,
+              (Point)p1,
+              (Point)p2,
+              (uint32_t)color);
+DEFINE_STRUCT(Testwithfunc,
+              (int)a,
+              (Point)p);
+
+TEST(REFL_TEST, refk_struct)
+{
+    std::stringstream result;
+    {
+        Rect rect{
+            {1.2, 3.4},
+            {5.6, 7.8},
+            12345678,
+        };
+        result << rect;
+    }
+    std::cout << "serialize rect result:" << std::endl
+              << result.str() << std::endl;
+
+    Rect rect2;
+    refl::deserializeObj(result, rect2);
+    std::cout << "deserialize rect result:" << std::endl;
+    refl::serializeObj(std::cout, rect2);
+}
+
 DEFINE_STRUCT(TEST_CBOR,
               (int)a,
               (double)b);

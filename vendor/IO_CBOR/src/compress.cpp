@@ -163,6 +163,7 @@ void HuffmanEncoder::buildTable()
     writeTable(num_symbols);
     buildCodes(num_symbols);
 }
+
 void HuffmanEncoder::writeTable(int num_symbols)
 {
     const int kSymBits = log2(max_symbols);
@@ -249,4 +250,35 @@ void HuffmanEncoder::walk(Node *n, int level)
     }
     walk(n->l, level + 1);
     walk(n->r, level + 1);
+}
+
+int64_t cborio::HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out)
+{
+    uint8_t *out_start = out;
+    int64_t chunk_size = 1 << 18;
+    for (int64_t start = 0; start < len; start += chunk_size)
+    {
+        int64_t remaining = std::min(chunk_size, len - start);
+        uint8_t *marker = out;
+        out += 3;
+
+        cborio::HuffmanEncoder encoder(out);
+        for (int64_t i = 0; i < remaining; ++i)
+        {
+            encoder.scan(buf[i]);
+        }
+        encoder.buildTable();
+        for (int64_t i = 0; i < remaining; ++i)
+        {
+            encoder.encode(buf[i]);
+        }
+        int64_t chunk_written = encoder.finish();
+        marker[0] = chunk_written & 0xff;
+        marker[1] = (chunk_written >> 8) & 0xff;
+        marker[2] = (chunk_written >> 16) & 0xff;
+
+        buf += remaining;
+        out += chunk_written;
+    }
+    return out - out_start;
 }
