@@ -1,5 +1,6 @@
 #include "compress.h"
 #include <cassert>
+#include <memory.h>
 #include <algorithm>
 
 using namespace cborio;
@@ -12,6 +13,7 @@ using namespace cborio;
     } while (0);
 
 constexpr int64_t kMaxChunkSize = 1 << 18; // 256k
+constexpr int kMaxSymbols = 256;
 
 std::string toBinary(int v, int size)
 {
@@ -116,6 +118,9 @@ void BitWriter::flush()
     }
 }
 
+// http://cbloomrants.blogspot.com/2010/08/08-12-10-lost-huffman-paper.html
+// https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
+
 void HuffmanEncoder::buildTable()
 {
     Node *q[256];
@@ -210,7 +215,8 @@ void HuffmanEncoder::buildCodes(int num_symbols)
         LOGV(2, "code:%s hex:%x level:%d symbol:%d\n", toBinary(code, level).c_str(), code, level, symbol);
     }
 }
-
+// https://en.wikipedia.org/wiki/Package-merge_algorithm
+// http://cbloomrants.blogspot.com/2010/07/07-03-10-length-limitted-huffman-codes.html
 void HuffmanEncoder::limitLength(int num_symbols)
 {
     // Limit the maximum code length
@@ -251,6 +257,89 @@ void HuffmanEncoder::walk(Node *n, int level)
     }
     walk(n->l, level + 1);
     walk(n->r, level + 1);
+}
+
+void HuffmanDecoder::readTable()
+{
+    m_br.refill();
+    num_symbols = m_br.readBits(m_symbits) + 1;
+
+    assert(num_symbols <= kMaxSymbols);
+
+    for (int i = 0; i < num_symbols; ++i)
+    {
+        m_br.refill();
+        int symbol = m_br.readBits(m_symbits);
+        int codelen = m_br.readBits(4) + 1;
+        LOGV(2, "sym:%d len:%d\n", symbol, codelen);
+
+        ++codelen_cnt[codelen];
+        symbol_t[i] = symbol;
+        min_codelen = std::min(min_codelen, codelen);
+        max_codelen = std::max(max_codelen, codelen);
+    }
+    LOGV(1, "num_sym %d codelen(min:%d, max:%d)\n", num_symbols, min_codelen, max_codelen);
+
+    // Ensure we catch up to be byte aligned.
+    m_br.byteAlign();
+
+    assignCodes();
+}
+
+void HuffmanDecoder::decode(uint8_t *output, uint8_t *output_end)
+{
+    uint8_t *src = m_br.cursor();
+    uint8_t *src_end = m_br.end();
+    int position = 24;
+    uint32_t bits = 0;
+
+    for (;;)
+    {
+        while (position >= 0)
+        {
+            bits |= (src < src_end ? *src++ : 0) << position;
+            position -= 8;
+        }
+        int n = bits >> (32 - max_codelen);
+        int len = bits_to_len[n];
+        *output++ = bits_to_sym[n];
+        if (output >= output_end)
+        {
+            break;
+        }
+        bits <<= len;
+        position += len;
+    }
+}
+
+uint8_t HuffmanDecoder::decodeOne()
+{
+    m_br.refill();
+    int n = m_br.bits() >> (32 - max_codelen);
+    int len = bits_to_len[n];
+    m_br.readBits(len);
+    return bits_to_sym[n];
+}
+
+void HuffmanDecoder::assignCodes()
+{
+    int p = 0;
+    uint8_t *cursym = &symbol_t[0];
+    for (int i = min_codelen; i <= max_codelen; ++i)
+    {
+        int n = codelen_cnt[i];
+        if (n)
+        {
+            int shift = max_codelen - i;
+            memset(bits_to_len + p, i, n << shift);
+            int m = 1 << shift;
+            do
+            {
+                memset(bits_to_sym + p, *cursym++, m);
+                p += m;
+            } while (--n);
+        }
+    }
 }
 
 int64_t cborio::HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out)

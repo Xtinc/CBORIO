@@ -39,6 +39,7 @@ namespace cborio
 
         uint32_t bits() const { return m_bits; }
         int position() const { return m_pos; }
+        uint8_t *end() const { return m_end; }
         uint8_t *cursor() const
         {
             return m_cur - ((24 - m_pos) / 8);
@@ -76,6 +77,8 @@ namespace cborio
     class HuffmanEncoder
     {
     private:
+        int max_symbols;
+        // todo :symol,256,node=2*256
         struct Node
         {
             int freq;
@@ -83,7 +86,6 @@ namespace cborio
             Node *l;
             Node *r;
         } m_nodes[512];
-        int max_symbols;
         int m_code[256];
         uint8_t m_len[256];
         BitWriter m_writer;
@@ -99,12 +101,14 @@ namespace cborio
                 m_nodes[i].freq = 0;
             }
         }
-        BitWriter &writer() { return m_writer; }
+        BitWriter &writer()
+        {
+            return m_writer;
+        }
         void scan(int symbol)
         {
             ++m_nodes[symbol].freq;
         }
-        void buildTable();
         void encode(int symbol)
         {
             m_writer.writeBits(m_code[symbol], m_len[symbol]);
@@ -113,12 +117,45 @@ namespace cborio
         {
             return m_writer.finish();
         }
+        void buildTable();
 
     private:
         void writeTable(int num_symbols);
         void buildCodes(int num_symbols);
         void limitLength(int num_symbols);
         void walk(Node *n, int level);
+    };
+
+    class HuffmanDecoder
+    {
+        BitReader m_br;
+        int m_symbits;
+        int num_symbols;
+        int min_codelen;
+        int max_codelen;
+        int codelen_cnt[17] = {0};
+
+        uint8_t symbol_t[256];
+        uint8_t bits_to_sym[0x800];
+        uint8_t bits_to_len[0x800];
+
+    public:
+        HuffmanDecoder(uint8_t *buffer, uint8_t *end, int sym_bits = 8)
+            : m_br(buffer, end),
+              m_symbits(sym_bits),
+              num_symbols(0),
+              min_codelen(255),
+              max_codelen(0)
+        {
+        }
+
+        BitReader &br() { return m_br; }
+        void readTable();
+        void decode(uint8_t *output, uint8_t *output_end);
+        uint8_t decodeOne();
+
+    private:
+        void assignCodes();
     };
 
     int64_t HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out);
