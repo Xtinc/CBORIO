@@ -428,7 +428,7 @@ TEST(REFL_TEST, refk_struct)
               << result.str() << std::endl;
 
     Rect rect2;
-    REFL::deserializeObj(result, rect2);
+    refl::deserializeObj(result, rect2);
     std::cout << "deserialize rect result:" << std::endl;
-    REFL::serializeObj(std::cout, rect2);
+    refl::serializeObj(std::cout, rect2);
 }

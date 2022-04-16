@@ -139,18 +139,31 @@ using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
     {                                                                       \
         friend std::ostream &operator<<(std::ostream &os, st &ss)           \
         {                                                                   \
-            REFL::serializeObj(os, ss);                                     \
+            refl::serializeObj(os, ss);                                     \
             return os;                                                      \
         };                                                                  \
         template <typename, size_t>                                         \
         struct FIELD;                                                       \
+        static constexpr const char *_field_name_ = _REFL_STRING(st);       \
         static constexpr size_t _field_count_ = GET_ARG_COUNT(__VA_ARGS__); \
         _REFL_PASTE(_RFEL_REPEAT_, GET_ARG_COUNT(__VA_ARGS__))              \
         (FIELD_EACH, 0, __VA_ARGS__)                                        \
     }
 
-namespace REFL
+#define REFL(var) refl::REFLINFO(_REFL_STRING(var), var)
+
+namespace refl
 {
+    template <typename>
+    struct is_pair : std::false_type
+    {
+    };
+
+    template <typename T, typename U>
+    struct is_pair<std::pair<T, U>> : std::true_type
+    {
+    };
+
     template <typename T, typename = void>
     struct IsReflected : std::false_type
     {
@@ -167,12 +180,10 @@ namespace REFL
     {
         using TDECAY = typename std::decay<T>::type;
         // tricky
-        (void)std::initializer_list<size_t>
-        {
+        (void)std::initializer_list<size_t>{
             (f(typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).name(),
                typename TDECAY::template FIELD<T, Is>(std::forward<T>(obj)).value()),
-             Is)...
-        };
+             Is)...};
     }
 
     template <typename T, typename F>
@@ -182,6 +193,13 @@ namespace REFL
         forEach(std::forward<T>(obj),
                 std::forward<F>(f),
                 make_index_sequence<TP::_field_count_>{});
+    }
+
+    template <typename T>
+    inline constexpr auto REFLINFO(const char *name, T &t)
+        -> std::pair<const char *, T>
+    {
+        return std::make_pair(name, t);
     }
 
     struct GFunc_out;

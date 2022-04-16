@@ -15,14 +15,11 @@ DEFINE_STRUCT(TEST_CBOR,
 TEST(BAGREC, stream_io)
 {
     TEST_CBOR tcb = {1, 8.9};
+    // encoder
     cbostream cbs;
-    cbs << tcb;
-    auto ptr = cbs.data();
-    for (size_t i = 0; i < cbs.size(); ++i)
-    {
-        std::cout << hex(*(ptr + i));
-    }
-    std::cout << std::endl;
+    uint64_t ces = 887;
+    cbs << REFL(tcb) << "cessjo" << 1 << 5.599 << -1 << REFL(ces);
+    // decoder
     hd_debug hd;
     ro_file ro(cbs.data(), cbs.size());
     cborio::decoder de(ro, hd);
