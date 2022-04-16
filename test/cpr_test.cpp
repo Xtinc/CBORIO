@@ -31,7 +31,7 @@ int64_t HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out)
         {
             encoder.scan(buf[i]);
         }
-        encoder.BuildTable();
+        encoder.buildTable();
         for (int64_t i = 0; i < remaining; ++i)
         {
             encoder.encode(buf[i]);

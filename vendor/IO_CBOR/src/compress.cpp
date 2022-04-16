@@ -91,16 +91,6 @@ void BitWriter::writeBits(int v, int n)
     }
 }
 
-void BitWriter::flush()
-{
-    while (m_pos >= 8)
-    {
-        m_pos -= 8;
-        *m_cur = (m_bits >> m_pos) & 0xFF;
-        ++m_cur;
-    }
-}
-
 int64_t BitWriter::finish()
 {
     flush();
@@ -112,32 +102,46 @@ int64_t BitWriter::finish()
         ++m_cur;
         m_pos = 0;
     }
-    return m_cur - m_start;
+    return m_cur - start_;
 }
 
-void HuffmanEncoder::BuildTable()
+void BitWriter::flush()
+{
+    while (m_pos >= 8)
+    {
+        m_pos -= 8;
+        *m_cur = (m_bits >> m_pos) & 0xFF;
+        ++m_cur;
+    }
+}
+
+void HuffmanEncoder::buildTable()
 {
     Node *q[256];
     int num_symbols = 0;
     for (int i = 0; i < max_symbols; ++i)
     {
-        if (m_nodes[i].freq != 0)
+        if (m_nodes[i].freq)
         {
             m_nodes[num_symbols] = m_nodes[i];
             q[num_symbols] = &m_nodes[num_symbols];
             ++num_symbols;
         }
     }
-    auto binarycomp = [](const Node *l, const Node *r)
-    { return l->freq > r->freq; };
-    std::make_heap(&q[0], &q[num_symbols], binarycomp);
-    // build huffman tree
-    for (auto i = num_symbols; i > 1; --i)
+
+    auto c = [](const Node *l, const Node *r)
+    {
+        return l->freq > r->freq;
+    };
+    std::make_heap(&q[0], &q[num_symbols], c);
+
+    // Build Huffman tree
+    for (int i = num_symbols; i > 1; --i)
     {
         Node *n1 = q[0];
-        std::pop_heap(&q[0], &q[i], binarycomp);
+        std::pop_heap(&q[0], &q[i], c);
         Node *n2 = q[0];
-        std::pop_heap(&q[0], &q[i - 1], binarycomp);
+        std::pop_heap(&q[0], &q[i - 1], c);
 
         Node *parent = &m_nodes[num_symbols + i];
         parent->freq = n1->freq + n2->freq;
@@ -145,33 +149,26 @@ void HuffmanEncoder::BuildTable()
         parent->l = n2;
         parent->r = n1;
         q[i - 2] = parent;
-        std::push_heap(&q[0], &q[i - 1], binarycomp);
+        std::push_heap(&q[0], &q[i - 1], c);
     }
+
+    // Label the distances from the root for the leafs
     walk(q[0], num_symbols == 1 ? 1 : 0);
-    // sort leaf nodes
-    std::sort(&m_nodes[0], &m_nodes[num_symbols],
-              [](const Node &l, const Node &r)
+    // Sort leaf nodes into level order.  This is required
+    // for both length limiting and writing the table.
+    std::sort(&m_nodes[0], &m_nodes[num_symbols], [](const Node &l, const Node &r)
               { return l.freq < r.freq; });
-    WriteTable(num_symbols);
-}
 
-void HuffmanEncoder::walk(Node *n, int level)
-{
-    if (n->symbol != -1)
-    {
-        n->freq = level;
-        return;
-    }
-    walk(n->l, level + 1);
-    walk(n->r, level + 1);
+    limitLength(num_symbols);
+    writeTable(num_symbols);
+    buildCodes(num_symbols);
 }
-
-void HuffmanEncoder::WriteTable(int num_symbols)
+void HuffmanEncoder::writeTable(int num_symbols)
 {
     const int kSymBits = log2(max_symbols);
     m_writer.writeBits(num_symbols - 1, kSymBits);
 
-    for (auto i = 0; i < num_symbols; ++i)
+    for (int i = 0; i < num_symbols; ++i)
     {
         m_writer.writeBits(m_nodes[i].symbol, kSymBits);
         m_writer.writeBits(m_nodes[i].freq - 1, 4);
@@ -185,6 +182,7 @@ void HuffmanEncoder::buildCodes(int num_symbols)
 {
     int code = 0;
     int last_level = -1;
+    LOGV(2, "Write num_symbols %d\n", num_symbols);
     for (int i = 0; i < num_symbols; ++i)
     {
         // Build the binary representation.
@@ -204,10 +202,51 @@ void HuffmanEncoder::buildCodes(int num_symbols)
         }
 
         int symbol = m_nodes[i].symbol;
-        m_length[symbol] = level;
+        m_len[symbol] = level;
         m_code[symbol] = code;
 
-        LOGV(2, "code:%s hex:%x level:%d symbol:%d\n",
-             toBinary(code, level).c_str(), code, level, symbol);
+        LOGV(2, "code:%s hex:%x level:%d symbol:%d\n", toBinary(code, level).c_str(), code, level, symbol);
     }
+}
+
+void HuffmanEncoder::limitLength(int num_symbols)
+{
+    // Limit the maximum code length
+    int k = 0;
+    int maxk = (1 << kMaxHuffCodeLength) - 1;
+    for (int i = num_symbols - 1; i >= 0; --i)
+    {
+        m_nodes[i].freq = std::min(m_nodes[i].freq, kMaxHuffCodeLength);
+        k += 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
+    }
+    LOGV(3, "k before: %.6lf\n", k / double(maxk));
+    for (int i = num_symbols - 1; i >= 0 && k > maxk; --i)
+    {
+        while (m_nodes[i].freq < kMaxHuffCodeLength)
+        {
+            ++m_nodes[i].freq;
+            k -= 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
+        }
+    }
+    LOGV(3, "k pass1: %.6lf\n", k / double(maxk));
+    for (int i = 0; i < num_symbols; ++i)
+    {
+        while (k + (1 << (kMaxHuffCodeLength - m_nodes[i].freq)) <= maxk)
+        {
+            k += 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
+            --m_nodes[i].freq;
+        }
+    }
+    LOGV(3, "k pass2: %x, %x\n", k, maxk);
+}
+
+void HuffmanEncoder::walk(Node *n, int level)
+{
+    if (n->symbol != -1)
+    {
+        n->freq = level;
+        return;
+    }
+    walk(n->l, level + 1);
+    walk(n->r, level + 1);
 }
