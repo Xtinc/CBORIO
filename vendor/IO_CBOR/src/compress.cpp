@@ -14,6 +14,7 @@ using namespace cborio;
 
 constexpr int64_t kMaxChunkSize = 1 << 18; // 256k
 constexpr int kMaxSymbols = 256;
+constexpr int kMaxHuffCodeLength = 11;
 
 std::string toBinary(int v, int size)
 {
@@ -215,8 +216,10 @@ void HuffmanEncoder::buildCodes(int num_symbols)
         LOGV(2, "code:%s hex:%x level:%d symbol:%d\n", toBinary(code, level).c_str(), code, level, symbol);
     }
 }
+
 // https://en.wikipedia.org/wiki/Package-merge_algorithm
 // http://cbloomrants.blogspot.com/2010/07/07-03-10-length-limitted-huffman-codes.html
+
 void HuffmanEncoder::limitLength(int num_symbols)
 {
     // Limit the maximum code length
@@ -371,4 +374,23 @@ int64_t cborio::HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out)
         out += chunk_written;
     }
     return out - out_start;
+}
+
+void cborio::HuffmanDecompress(uint8_t *buf, int64_t len, uint8_t *out, int64_t out_len)
+{
+    int64_t chunk_size = kMaxChunkSize;
+    uint8_t *buf_end = buf + len;
+    while (buf < buf_end)
+    {
+        int compressed_size = buf[0] | (buf[1] << 8) | (buf[2] << 16);
+        buf += 3;
+
+        HuffmanDecoder decoder(buf, buf + compressed_size);
+        decoder.readTable();
+        decoder.decode(out, out + std::min(chunk_size, out_len));
+
+        buf += compressed_size;
+        out += chunk_size;
+        out_len -= chunk_size;
+    }
 }

@@ -72,8 +72,6 @@ namespace cborio
         void flush();
     };
 
-    const int kMaxHuffCodeLength = 11;
-
     class HuffmanEncoder
     {
     private:
@@ -159,5 +157,6 @@ namespace cborio
     };
 
     int64_t HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out);
+    void HuffmanDecompress(uint8_t *buf, int64_t len, uint8_t *out, int64_t out_len);
 }
 #endif
