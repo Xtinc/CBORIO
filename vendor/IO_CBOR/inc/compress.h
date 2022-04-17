@@ -3,6 +3,8 @@
 
 #include <string>
 
+// depend on cmake
+#ifdef IS_MSVC_CXX_COMPILER
 // nasm from https://github.com/llvm-mirror/libcxx/blob/9dcbb46826fd4d29b1485f25e8986d36019a6dca/include/support/win32/support.h#L106-L182
 // Returns the number of trailing 0-bits in x, starting at the least significant
 // bit position. If x is 0, the result is undefined.
@@ -74,10 +76,15 @@ inline int llvm_clzl(unsigned long mask)
         return static_cast<int>(31 - where);
     return 32; // Undefined Behavior.
 }
+#endif
 
 inline int llvm_clz(unsigned int x)
 {
+#ifdef IS_MSVC_CXX_COMPILER
     return llvm_clzl(x);
+#else
+    return __builtin_clz(x);
+#endif
 }
 
 namespace cborio
