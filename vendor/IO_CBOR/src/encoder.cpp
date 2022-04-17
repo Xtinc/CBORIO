@@ -73,7 +73,7 @@ void encoder::write_type_value(int major_type, unsigned long long value)
     return;
 }
 
-void encoder::write_array_head(int size)
+void encoder::write_array_head(size_t size)
 {
     write_type_value(4, static_cast<unsigned int>(size));
 }
@@ -83,7 +83,7 @@ void encoder::write_null()
     m_out.put_byte(static_cast<unsigned char>(0xf6));
 }
 
-void encoder::write_map(int size)
+void encoder::write_map(size_t size)
 {
     write_type_value(5, static_cast<unsigned int>(size));
 }

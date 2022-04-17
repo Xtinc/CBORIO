@@ -136,7 +136,7 @@ TEST(HUFFMAN_TEST, huffman_speed)
     int64_t len;
     std::unique_ptr<uint8_t> buf = readhfile("danmu", len);
     // len = 10000;
-    printf("Read %ld bytes\n", len);
+    printf("Read %lld bytes\n", len);
     std::unique_ptr<uint8_t> out;
     out.reset(new uint8_t[len]);
 
@@ -149,7 +149,7 @@ TEST(HUFFMAN_TEST, huffman_speed)
             encoded_size = cborio::HuffmanCompress(buf.get(), len, out.get());
         }
         double elapsed = timer.elapsed() / 1000;
-        printf("Encoded %ld into %ld bytes\n", len, encoded_size);
+        printf("Encoded %lld into %lld bytes\n", len, encoded_size);
         printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (len * kIters / (1024. * 1024.)) / elapsed);
     }
 }

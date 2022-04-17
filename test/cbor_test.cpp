@@ -347,9 +347,9 @@ TEST(CBOR_IO_TestCase, write_diskfile_str)
     for (int i = 0; i < 10000; ++i)
     {
         std::string str(dis_len(gen), '\0');
-        for (auto &i : str)
+        for (auto &j : str)
         {
-            i = dis_char(gen);
+            j = static_cast<char>(dis_char(gen));
         }
         ou << "s" << str << '\n';
         en << str;

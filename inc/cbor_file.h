@@ -33,7 +33,7 @@ private:
             m_buffer.emplace_back(value);
         }
 
-        void put_bytes(const unsigned char *data, int size) override
+        void put_bytes(const unsigned char *data, size_t size) override
         {
             for (auto i = 0; i < size; ++i)
             {

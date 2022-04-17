@@ -443,7 +443,7 @@ void decoder::run()
             if (m_input.has_bytes(m_curlen))
             {
                 m_status = DECODER_STATUS::STATE_TYPE;
-                m_handler.on_float(get_data<double>());
+                m_handler.on_double(get_data<double>());
             }
             else
             {

@@ -40,7 +40,7 @@ namespace cborio
 
         virtual void on_double(double value) = 0;
 
-        virtual void on_bytes(unsigned char *data, int size) = 0;
+        virtual void on_bytes(unsigned char *data, size_t size) = 0;
 
         virtual void on_string(std::string &str) = 0;
 

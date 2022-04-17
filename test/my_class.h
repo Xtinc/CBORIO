@@ -20,7 +20,7 @@ public:
         std::cout << hex(c);
         return;
     }
-    void put_bytes(const unsigned char *data, int size) override
+    void put_bytes(const unsigned char *data, size_t size) override
     {
         for (int i = 0; i < size; ++i)
         {
@@ -43,7 +43,7 @@ public:
         str += ss.str();
         return;
     }
-    void put_bytes(const unsigned char *data, int size) override
+    void put_bytes(const unsigned char *data, size_t size) override
     {
         std::stringstream ss("");
         for (int i = 0; i < size; ++i)
@@ -80,7 +80,7 @@ public:
         write(reinterpret_cast<char *>(&value), sizeof(unsigned char));
     }
 
-    void put_bytes(const unsigned char *data, int size) override
+    void put_bytes(const unsigned char *data, size_t size) override
     {
         write(reinterpret_cast<const char *>(data), size);
     };
@@ -101,7 +101,7 @@ public:
         return m_buffer.data();
     };
 
-    unsigned int getSize() const
+    size_t getSize() const
     {
         return m_buffer.size();
     };
@@ -111,7 +111,7 @@ public:
         m_buffer.emplace_back(value);
     }
 
-    void put_bytes(const unsigned char *data, int size) override
+    void put_bytes(const unsigned char *data, size_t size) override
     {
         for (auto i = 0; i < size; ++i)
         {
@@ -128,8 +128,8 @@ public:
 class ro_disk_file : public cborio::input, public std::ifstream
 {
 private:
-    int m_length;
-    int m_offset;
+    int64_t m_length;
+    int64_t m_offset;
 
 public:
     ro_disk_file(const char *filename)
@@ -165,11 +165,11 @@ class ro_file : public cborio::input
 {
 private:
     const unsigned char *m_data;
-    int m_size;
-    int m_offset;
+    int64_t m_size;
+    int64_t m_offset;
 
 public:
-    ro_file(const unsigned char *data, int size)
+    ro_file(const unsigned char *data, size_t size)
     {
         m_data = data;
         m_size = size;
@@ -211,10 +211,10 @@ public:
         printf("double: %15.7f\n", value);
     }
 
-    void on_bytes(unsigned char *data, int size)
+    void on_bytes(unsigned char *data, size_t size)
     {
-        printf("bytes with size %d: ", size);
-        for (int i = 0; i < size; ++i)
+        printf("bytes with size %lld: ", size);
+        for (auto i = 0; i < size; ++i)
         {
             printf("%2x", *(data + i));
         }

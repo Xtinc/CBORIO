@@ -8,7 +8,7 @@ using namespace cborio;
 #define LOGV(level, s, ...)                    \
     do                                         \
     {                                          \
-        if (level <= 0)                        \
+        if (level >= 0)                        \
             fprintf(stderr, s, ##__VA_ARGS__); \
     } while (0);
 
@@ -172,7 +172,7 @@ void HuffmanEncoder::buildTable()
     std::sort(&m_nodes[0], &m_nodes[num_symbols], [](const Node &l, const Node &r)
               { return l.freq < r.freq; });
 
-    limitLength(num_symbols);
+    // limitLength(num_symbols);
     writeTable(num_symbols);
     buildCodes(num_symbols);
 }
@@ -288,7 +288,7 @@ void HuffmanDecoder::readTable()
         max_codelen = std::max(max_codelen, codelen);
     }
     LOGV(1, "num_sym %d codelen(min:%d, max:%d)\n", num_symbols, min_codelen, max_codelen);
-
+    // https://www.jianshu.com/p/4cbbfed4160b
     // Ensure we catch up to be byte aligned.
     m_br.byteAlign();
 

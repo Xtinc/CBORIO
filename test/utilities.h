@@ -71,7 +71,7 @@ int checkBytes(uint8_t *buf, uint8_t *actual, int64_t len)
                 fprintf(stderr, "more than 20 busted\n");
                 break;
             }
-            fprintf(stderr, "bad idx:%ld,orig:%d,decoded:%d\n", i, orig, v);
+            fprintf(stderr, "bad idx:%lld,orig:%d,decoded:%d\n", i, orig, v);
         }
     }
     return bad;

@@ -13,7 +13,7 @@ namespace cborio
 
         virtual void put_byte(unsigned char value) = 0;
 
-        virtual void put_bytes(const unsigned char *data, int size) = 0;
+        virtual void put_bytes(const unsigned char *data, size_t size) = 0;
     };
 
     class encoder
@@ -105,9 +105,9 @@ namespace cborio
         void write_float_value(float value);
         void write_float_value(double value);
         void write_type_value(int major_type, unsigned long long value);
-        void write_array_head(int size);
+        void write_array_head(size_t size);
         void write_null();
-        void write_map(int size);
+        void write_map(size_t size);
         void write_tag(const unsigned int tag);
         void write_special(int special);
         void write_undefined();
