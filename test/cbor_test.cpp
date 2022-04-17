@@ -82,8 +82,8 @@ TEST_F(CBOR_O_TestCase, signed_int)
 
 TEST_F(CBOR_O_TestCase, signed_ll)
 {
-
-    for (auto i : {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285})
+    std::vector<int64_t> vec = {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285};
+    for (auto i : vec)
     {
         en.write_data(i);
     }
@@ -220,7 +220,8 @@ TEST_F(CBOR_I_TestCase, signed_int)
 TEST_F(CBOR_I_TestCase, signed_ll)
 {
     RO_DECODER_CLS
-    for (auto i : {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285})
+    std::vector<int64_t> vec = {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285};
+    for (auto i : vec)
     {
         en.write_data(i);
     }

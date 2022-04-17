@@ -31,7 +31,7 @@ int log2(int v)
 {
     if (v > 0)
     {
-        return 31 - __builtin_clz(v);
+        return 31 - llvm_clz(v);
     }
     else
     {

@@ -2,9 +2,11 @@
 #define SIMPLE_MACRO_H
 
 #define PP_THIRD_ARG(a, b, c, ...) c
-//#define VA_OPT_SUPPORTED_I(...) PP_THIRD_ARG(__VA_OPT__(, ), 1, 0, )
-//#define VA_OPT_SUPPORTED VA_OPT_SUPPORTED_I(?)
+#define VA_OPT_SUPPORTED_I(...) PP_THIRD_ARG(__VA_OPT__(, ), 1, 0, )
+#define VA_OPT_SUPPORTED VA_OPT_SUPPORTED_I(?)
 
+// after platform vs2019 version 16.6 Preview 2 complier with /Zc
+// https://devblogs.microsoft.com/cppblog/announcing-full-support-for-a-c-c-conformant-preprocessor-in-msvc/
 // Traditional MSVC requires a special EXPAND phase
 #if (defined(_MSC_VER) && !defined(_MSVC_TRADITIONAL)) || \
     (defined(_MSVC_TRADITIONAL) && _MSVC_TRADITIONAL)

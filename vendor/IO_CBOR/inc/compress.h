@@ -3,6 +3,83 @@
 
 #include <string>
 
+// nasm from https://github.com/llvm-mirror/libcxx/blob/9dcbb46826fd4d29b1485f25e8986d36019a6dca/include/support/win32/support.h#L106-L182
+// Returns the number of trailing 0-bits in x, starting at the least significant
+// bit position. If x is 0, the result is undefined.
+inline int llvm_ctzll(unsigned long long mask)
+{
+    unsigned long where;
+// Search from LSB to MSB for first set bit.
+// Returns zero if no set bit is found.
+#if defined(_LIBCPP_HAS_BITSCAN64)
+    (defined(_M_AMD64) || defined(__x86_64__)) if (_BitScanForward64(&where, mask)) return static_cast<int>(where);
+#else
+    // Win32 doesn't have _BitScanForward64 so emulate it with two 32 bit calls.
+    // Scan the Low Word.
+    if (_BitScanForward(&where, static_cast<unsigned long>(mask)))
+        return static_cast<int>(where);
+    // Scan the High Word.
+    if (_BitScanForward(&where, static_cast<unsigned long>(mask >> 32)))
+        return static_cast<int>(where + 32); // Create a bit offset from the LSB.
+#endif
+    return 64;
+}
+
+inline int llvm_ctzl(unsigned long mask)
+{
+    unsigned long where;
+    // Search from LSB to MSB for first set bit.
+    // Returns zero if no set bit is found.
+    if (_BitScanForward(&where, mask))
+        return static_cast<int>(where);
+    return 32;
+}
+
+inline int llvm_ctz(unsigned int mask)
+{
+    // Win32 and Win64 expectations.
+    static_assert(sizeof(mask) == 4, "");
+    static_assert(sizeof(unsigned long) == 4, "");
+    return llvm_ctzl(static_cast<unsigned long>(mask));
+}
+
+// Returns the number of leading 0-bits in x, starting at the most significant
+// bit position. If x is 0, the result is undefined.
+inline int llvm_clzll(unsigned long long mask)
+{
+    unsigned long where;
+// BitScanReverse scans from MSB to LSB for first set bit.
+// Returns 0 if no set bit is found.
+#if defined(_LIBCPP_HAS_BITSCAN64)
+    if (_BitScanReverse64(&where, mask))
+        return static_cast<int>(63 - where);
+#else
+    // Scan the high 32 bits.
+    if (_BitScanReverse(&where, static_cast<unsigned long>(mask >> 32)))
+        return static_cast<int>(63 -
+                                (where + 32)); // Create a bit offset from the MSB.
+    // Scan the low 32 bits.
+    if (_BitScanReverse(&where, static_cast<unsigned long>(mask)))
+        return static_cast<int>(63 - where);
+#endif
+    return 64; // Undefined Behavior.
+}
+
+inline int llvm_clzl(unsigned long mask)
+{
+    unsigned long where;
+    // Search from LSB to MSB for first set bit.
+    // Returns zero if no set bit is found.
+    if (_BitScanReverse(&where, mask))
+        return static_cast<int>(31 - where);
+    return 32; // Undefined Behavior.
+}
+
+inline int llvm_clz(unsigned int x)
+{
+    return llvm_clzl(x);
+}
+
 namespace cborio
 {
     class BitReader
