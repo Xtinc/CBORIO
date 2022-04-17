@@ -21,9 +21,12 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
     target_link_libraries(bag_test PRIVATE BAGREC gtest_main)
     add_executable(cpr_test cpr_test.cpp)
     target_link_libraries(cpr_test PRIVATE CBOR gtest_main)
-    gtest_discover_tests(${SUBPRJ})
-    gtest_discover_tests( bag_test)
-    gtest_discover_tests(cpr_test)
+    gtest_discover_tests(${SUBPRJ}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests( bag_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
+    gtest_discover_tests(cpr_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/build/test)
     if(ENABLE_LCOV)
         message(STATUS "Enable Lcov in ${SUBPRJ}")
         message(STATUS "-- lcov Configure")

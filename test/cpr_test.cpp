@@ -119,7 +119,7 @@ TEST(HUFFMAN_TEST, huffman_short)
         EXPECT_EQ(checkBytes(decoded.get(), buf, len) == 0, true);
     }
 }
-/*
+
 TEST(HUFFMAN_TEST, huffman_encode)
 {
     int64_t len;
@@ -152,4 +152,4 @@ TEST(HUFFMAN_TEST, huffman_speed)
         printf("Encoded %ld into %ld bytes\n", len, encoded_size);
         printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (len * kIters / (1024. * 1024.)) / elapsed);
     }
-}*/
+}
