@@ -57,4 +57,37 @@ struct Timer
     std::chrono::high_resolution_clock::time_point time_;
 };
 
+int checkBytes(uint8_t *buf, uint8_t *actual, int64_t len)
+{
+    int bad = 0;
+    for (int64_t i = 0; i < len; ++i)
+    {
+        uint8_t orig = actual[i];
+        uint8_t v = buf[i];
+        if (orig != v)
+        {
+            if (++bad > 20)
+            {
+                fprintf(stderr, "more than 20 busted\n");
+                break;
+            }
+            fprintf(stderr, "bad idx:%ld,orig:%d,decoded:%d\n", i, orig, v);
+        }
+    }
+    return bad;
+}
+
+std::unique_ptr<uint8_t> readhfile(const char *filename, int64_t &len)
+{
+    FILE *f = fopen(filename, "r");
+    fseek(f, 0, SEEK_END);
+    len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    std::unique_ptr<uint8_t> buf;
+    buf.reset(new uint8_t[len]);
+    fread(buf.get(), 1, len, f);
+    return buf;
+}
+
 #endif

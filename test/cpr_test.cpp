@@ -2,23 +2,31 @@
 #include "compress.h"
 #include "utilities.h"
 
+bool testhuffman(uint8_t *buf, uint8_t *out, int64_t len)
+{
+    Timer timer;
+    cborio::HuffmanEncoder encoder(out);
+    for (int64_t i = 0; i < len; ++i)
+    {
+        encoder.scan(buf[i]);
+    }
+    encoder.buildTable();
+    for (int64_t i = 0; i < len; ++i)
+    {
+        encoder.encode(buf[i]);
+    }
+    int64_t encoder_size = encoder.finish();
+    std::unique_ptr<uint8_t> buf2(new uint8_t[len]);
+    cborio::HuffmanDecoder decoder(out, out + encoder_size);
+    decoder.readTable();
+    decoder.decode(buf2.get(), buf2.get() + len);
+    return checkBytes(buf2.get(), buf, len) == 0;
+}
+
 int main(int argc, char **argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
-}
-
-std::unique_ptr<uint8_t> readEnwik8(int64_t &len)
-{
-    FILE *f = fopen("danmu", "r");
-    fseek(f, 0, SEEK_END);
-    len = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    std::unique_ptr<uint8_t> buf;
-    buf.reset(new uint8_t[len]);
-    fread(buf.get(), 1, len, f);
-    return buf;
 }
 
 TEST(BITWISE_TestCase, bit_reader)
@@ -56,7 +64,7 @@ TEST(BITWISE_TestCase, bit_writer)
     EXPECT_EQ(con[3], 0xfc);
 }
 
-TEST(BITWISE_TestCase, bit_BELE)
+TEST(BITWISE_TestCase, bit_bele)
 {
     uint32_t tmp = 0;
     auto ptr = reinterpret_cast<uint8_t *>(&tmp);
@@ -69,7 +77,7 @@ TEST(BITWISE_TestCase, bit_BELE)
     EXPECT_EQ(127, btr.readBits(31));
 }
 
-TEST(BITWISE_TestCase, bit_io)
+TEST(BITWISE_TestCase, bit_rwio)
 {
     std::vector<unsigned char> con_in(100, 0x00);
     for (unsigned char i = 0; i < 100; ++i)
@@ -84,17 +92,47 @@ TEST(BITWISE_TestCase, bit_io)
         orig_reader.refill();
         writer.writeBit(orig_reader.readBit());
     }
-    for (auto &i : con_ou)
+    for (unsigned char i = 0; i < 100; ++i)
     {
-        std::cout << hex(i);
+        EXPECT_EQ(con_ou[i], i);
     }
-    std::cout << std::endl;
+}
+
+TEST(HUFFMAN_TEST, huffman_short)
+{
+    std::vector<std::string> tests{
+        "ABABABABCAAAABBBBABC",
+        "ABCDEFGHIJKLMNOPQRS",
+        "AAAAAAAABBBBBBBCCCCD"};
+    std::string str = tests[0] + tests[1] + tests[2] + tests[3];
+    tests.push_back(str);
+    /*for (auto &test : tests)
+    {
+         int64_t len = test.size();
+         uint8_t *buf = reinterpret_cast<uint8_t *>(const_cast<char *>(test.data()));
+         std::unique_ptr<uint8_t> out(new uint8_t[len + 100]);
+         auto en_size = cborio::HuffmanCompress(buf, len, out.get());
+         std::unique_ptr<uint8_t> buf2(new uint8_t[len]);
+         cborio::HuffmanDecompress(out.get(), en_size, buf2.get(), len);
+         EXPECT_EQ(checkBytes(buf2.get(), buf, len) == 0, true);
+    }*/
 }
 
 TEST(HUFFMAN_TEST, huffman_encode)
 {
     int64_t len;
-    std::unique_ptr<uint8_t> buf = readEnwik8(len);
+    auto buf = readhfile("enwik8", len);
+    std::unique_ptr<uint8_t> out(new uint8_t[len]);
+    for (int i = 1; i < 1000; i += 100)
+    {
+        EXPECT_EQ(testhuffman(buf.get(), out.get(), i), true);
+    }
+}
+
+TEST(HUFFMAN_TEST, huffman_speed)
+{
+    int64_t len;
+    std::unique_ptr<uint8_t> buf = readhfile("danmu", len);
     // len = 10000;
     printf("Read %ld bytes\n", len);
     std::unique_ptr<uint8_t> out;

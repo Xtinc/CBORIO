@@ -351,7 +351,7 @@ void HuffmanDecoder::assignCodes()
     }
 }
 
-int64_t cborio::HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out)
+int64_t cborio::HuffmanCompress(const uint8_t *buf, int64_t len, uint8_t *out)
 {
     uint8_t *out_start = out;
     int64_t chunk_size = 1 << 18;

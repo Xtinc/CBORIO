@@ -156,7 +156,7 @@ namespace cborio
         void assignCodes();
     };
 
-    int64_t HuffmanCompress(uint8_t *buf, int64_t len, uint8_t *out);
+    int64_t HuffmanCompress(const uint8_t *buf, int64_t len, uint8_t *out);
     void HuffmanDecompress(uint8_t *buf, int64_t len, uint8_t *out, int64_t out_len);
 }
 #endif

@@ -2,15 +2,9 @@
 #define MY_CLASS_H
 
 #include <fstream>
-#include <iomanip>
 #include <cstring>
-#include <vector>
-#include <list>
-#include <queue>
 #include <memory>
 #include <cstdlib>
-#include <map>
-#include <unordered_map>
 #include <sstream>
 #include "utilities.h"
 #include "encoder.h"
