@@ -103,19 +103,21 @@ TEST(HUFFMAN_TEST, huffman_short)
     std::vector<std::string> tests{
         "ABABABABCAAAABBBBABC",
         "ABCDEFGHIJKLMNOPQRS",
-        "AAAAAAAABBBBBBBCCCCD"};
-    std::string str = tests[0] + tests[1] + tests[2] + tests[3];
-    tests.push_back(str);
-    /*for (auto &test : tests)
+        "AAAAAAAABBBBBBBCCCCD",
+    };
+    tests.push_back(tests[0] + tests[0] + tests[0] + tests[0] + tests[0]);
+    for (auto &test : tests)
     {
-         int64_t len = test.size();
-         uint8_t *buf = reinterpret_cast<uint8_t *>(const_cast<char *>(test.data()));
-         std::unique_ptr<uint8_t> out(new uint8_t[len + 100]);
-         auto en_size = cborio::HuffmanCompress(buf, len, out.get());
-         std::unique_ptr<uint8_t> buf2(new uint8_t[len]);
-         cborio::HuffmanDecompress(out.get(), en_size, buf2.get(), len);
-         EXPECT_EQ(checkBytes(buf2.get(), buf, len) == 0, true);
-    }*/
+        int64_t len = test.size();
+        uint8_t *buf = reinterpret_cast<uint8_t *>(&test[0]);
+        std::unique_ptr<uint8_t> out;
+        out.reset(new uint8_t[100 + len]);
+        int64_t encoded_size = cborio::HuffmanCompress(buf, len, out.get());
+        std::unique_ptr<uint8_t> decoded;
+        decoded.reset(new uint8_t[len]);
+        cborio::HuffmanDecompress(out.get(), encoded_size, decoded.get(), len);
+        EXPECT_EQ(checkBytes(decoded.get(), buf, len) == 0, true);
+    }
 }
 
 TEST(HUFFMAN_TEST, huffman_encode)

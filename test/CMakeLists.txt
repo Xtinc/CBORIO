@@ -29,7 +29,7 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
             message(FATAL_ERROR "lcov required, but not found!")
         endif()
         if(CMAKE_BUILD_TYPE MATCHES Debug)
-            include(../CodeCoverage.cmake)
+            include(CodeCoverage.cmake)
             APPEND_COVERAGE_COMPILER_FLAGS()
             setup_target_for_coverage_lcov(
             NAME coverage 
