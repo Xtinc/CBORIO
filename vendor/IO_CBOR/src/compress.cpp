@@ -8,7 +8,7 @@ using namespace cborio;
 #define LOGV(level, s, ...)                    \
     do                                         \
     {                                          \
-        if (level >= 0)                        \
+        if (level <= 0)                        \
             fprintf(stderr, s, ##__VA_ARGS__); \
     } while (0);
 

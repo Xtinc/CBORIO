@@ -98,6 +98,24 @@ TEST(BITWISE_TestCase, bit_rwio)
     }
 }
 
+TEST(HUFFMAN_TEST, huffman_example)
+{
+    std::vector<unsigned char> con;
+    for (unsigned char i : {'a', 'a', 'b', 'b', 'c', 'c', 'c', 'c', 'd',
+                            'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e', 'e'})
+    {
+        con.emplace_back(i);
+    }
+    auto p_iter = con.data();
+    unsigned char *outfile = new unsigned char[con.size()];
+    cborio::HuffmanEncoder encoder(outfile);
+    for (int64_t i = 0; i < con.size(); ++i)
+    {
+        encoder.scan(*(p_iter + i));
+    }
+    encoder.buildTable();
+}
+
 TEST(HUFFMAN_TEST, huffman_short)
 {
     std::vector<std::string> tests{
@@ -106,15 +124,15 @@ TEST(HUFFMAN_TEST, huffman_short)
         "AAAAAAAABBBBBBBCCCCD",
     };
     tests.push_back(tests[0] + tests[0] + tests[0] + tests[0] + tests[0]);
+    // todo unique_ptr is proper for char[]?
+    // not porper according to valgrind. would be double free;
     for (auto &test : tests)
     {
         int64_t len = test.size();
         uint8_t *buf = reinterpret_cast<uint8_t *>(&test[0]);
-        std::unique_ptr<uint8_t> out;
-        out.reset(new uint8_t[100 + len]);
+        std::unique_ptr<uint8_t[]> out(new uint8_t[100 + len]);
         int64_t encoded_size = cborio::HuffmanCompress(buf, len, out.get());
-        std::unique_ptr<uint8_t> decoded;
-        decoded.reset(new uint8_t[len]);
+        std::unique_ptr<uint8_t[]> decoded(new uint8_t[len]);
         cborio::HuffmanDecompress(out.get(), encoded_size, decoded.get(), len);
         EXPECT_EQ(checkBytes(decoded.get(), buf, len) == 0, true);
     }
