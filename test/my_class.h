@@ -1,66 +1,20 @@
 #ifndef MY_CLASS_H
 #define MY_CLASS_H
 
-#include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <cstring>
-#include <string>
 #include <vector>
 #include <list>
 #include <queue>
-#include <type_traits>
-#include <typeinfo>
-#ifndef _MSC_VER
-#include <cxxabi.h>
-#endif
 #include <memory>
 #include <cstdlib>
 #include <map>
 #include <unordered_map>
 #include <sstream>
+#include "utilities.h"
 #include "encoder.h"
 #include "decoder.h"
-
-template <class T>
-std::string type_name()
-{
-    typedef typename std::remove_reference<T>::type TR;
-    std::unique_ptr<char, void (*)(void *)> own(
-#ifndef _MSC_VER
-        abi::__cxa_demangle(typeid(TR).name(), nullptr,
-                            nullptr, nullptr),
-#else
-        nullptr,
-#endif
-        std::free);
-    std::string r = own != nullptr ? own.get() : typeid(TR).name();
-    if (std::is_const<TR>::value)
-        r += " const";
-    if (std::is_volatile<TR>::value)
-        r += " volatile";
-    if (std::is_lvalue_reference<T>::value)
-        r += "&";
-    else if (std::is_rvalue_reference<T>::value)
-        r += "&&";
-    return r;
-}
-
-struct HexCharStruct
-{
-    unsigned char c;
-    HexCharStruct(unsigned char _c) : c(_c) {}
-};
-
-inline std::ostream &operator<<(std::ostream &o, const HexCharStruct &hs)
-{
-    return (o << std::setw(2) << std::setfill('0') << std::hex << (int)hs.c);
-}
-
-inline HexCharStruct hex(unsigned char _c)
-{
-    return HexCharStruct(_c);
-}
 
 class my_o : public cborio::output
 {
@@ -212,6 +166,7 @@ public:
         m_offset += count;
     }
 };
+
 class ro_file : public cborio::input
 {
 private:

@@ -1,14 +1,6 @@
 #include "gtest/gtest.h"
 #include "compress.h"
-#include <chrono>
-
-// http://mattmahoney.net/dc/textdata.html
-struct Timer
-{
-    Timer() : time_(std::chrono::high_resolution_clock::now()) {}
-    double elapsed() const { return std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - time_).count(); }
-    std::chrono::high_resolution_clock::time_point time_;
-};
+#include "utilities.h"
 
 int main(int argc, char **argv)
 {
@@ -18,7 +10,7 @@ int main(int argc, char **argv)
 
 std::unique_ptr<uint8_t> readEnwik8(int64_t &len)
 {
-    FILE *f = fopen("enwik8", "r");
+    FILE *f = fopen("danmu", "r");
     fseek(f, 0, SEEK_END);
     len = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -64,7 +56,7 @@ TEST(BITWISE_TestCase, bit_writer)
     EXPECT_EQ(con[3], 0xfc);
 }
 
-TEST(BITWISE_TestCase, bit_io)
+TEST(BITWISE_TestCase, bit_BELE)
 {
     uint32_t tmp = 0;
     auto ptr = reinterpret_cast<uint8_t *>(&tmp);
@@ -74,7 +66,29 @@ TEST(BITWISE_TestCase, bit_io)
     EXPECT_EQ(tmp, 4278190080);
     cborio::BitReader btr(ptr, ptr + sizeof(tmp));
     EXPECT_EQ(255, btr.bits());
-    EXPECT_EQ(255, btr.readBits(32));
+    EXPECT_EQ(127, btr.readBits(31));
+}
+
+TEST(BITWISE_TestCase, bit_io)
+{
+    std::vector<unsigned char> con_in(100, 0x00);
+    for (unsigned char i = 0; i < 100; ++i)
+    {
+        con_in[i] = i;
+    }
+    std::vector<unsigned char> con_ou(100, 0x00);
+    cborio::BitReader orig_reader(con_in.data(), con_in.data() + con_in.size());
+    cborio::BitWriter writer(con_ou.data());
+    for (size_t i = 0; i < 8 * con_in.size(); ++i)
+    {
+        orig_reader.refill();
+        writer.writeBit(orig_reader.readBit());
+    }
+    for (auto &i : con_ou)
+    {
+        std::cout << hex(i);
+    }
+    std::cout << std::endl;
 }
 
 TEST(HUFFMAN_TEST, huffman_encode)

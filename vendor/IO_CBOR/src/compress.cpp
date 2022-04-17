@@ -47,10 +47,15 @@ int BitReader::readBit()
     return r;
 }
 
+// https://stackoverflow.com/questions/18799344/shifting-a-32-bit-integer-by-32-bits
+// https://fgiesen.wordpress.com/2018/02/19/reading-bits-in-far-too-many-ways-part-1/
+
 int BitReader::readBits(int n)
 {
-    // m_bits>>1>>(31-n)
-    int r = m_bits >> (32 - n);
+    // m_bits>>1>>(31-n) instead of >>32-n for n=0
+    // avoid case >>32 & >>0
+    assert(n >= 0 && n < 32);
+    int r = m_bits >> 1 >> (31 - n);
     m_bits <<= n;
     m_pos += n;
     return r;
@@ -87,7 +92,8 @@ void BitWriter::writeBit(int v)
 
 void BitWriter::writeBits(int v, int n)
 {
-    m_bits = (m_bits << n) | v;
+    assert(n > 0 && n <= 32);
+    m_bits = (m_bits << 1 << (n - 1)) | v;
     m_pos += n;
     if (m_pos >= 8)
     {
