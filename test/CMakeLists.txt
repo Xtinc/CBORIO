@@ -34,7 +34,7 @@ message(STATUS "Enable Gtest in ${SUBPRJ}")
             setup_target_for_coverage_lcov(
             NAME coverage 
             EXECUTABLE ctest test 
-            EXCLUDE "/usr/*" 
+            EXCLUDE "/usr/*" "build/_deps/*"
             DEPENDENCIES ${SUBPRJ} bag_test cpr_test)
         endif()
     endif()
