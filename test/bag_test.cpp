@@ -49,7 +49,7 @@ TEST(BAGREC, stream_io)
     // encoder
     cbostream cbs;
     uint64_t ces = 887;
-    cbs << REFL(tcb) << "cessjo" << 1 << 5.599 << -1 << REFL(ces);
+    cbs << REFL(tcb) << "cessjo" << 1 << 5.599 << -1 << REFL(ces) << tcb;
     // decoder
     hd_debug hd;
     ro_file ro(cbs.data(), cbs.size());

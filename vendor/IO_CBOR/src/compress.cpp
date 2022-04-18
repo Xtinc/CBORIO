@@ -82,6 +82,7 @@ void BitReader::byteAlign()
 
 void BitWriter::writeBit(int v)
 {
+    assert(v >= 0);
     m_bits = (m_bits << 1) | v;
     ++m_pos;
     if (m_pos >= 8)
@@ -92,6 +93,7 @@ void BitWriter::writeBit(int v)
 
 void BitWriter::writeBits(int v, int n)
 {
+    assert(v >= 0);
     assert(n > 0 && n <= 32);
     m_bits = (m_bits << 1 << (n - 1)) | v;
     m_pos += n;
@@ -351,52 +353,53 @@ void HuffmanDecoder::assignCodes()
     }
 }
 
-int64_t cborio::HuffmanCompress(const uint8_t *buf, int64_t len, uint8_t *out)
+int64_t cborio::HuffmanCompress(const uint8_t *iter_src, int64_t len, uint8_t *iter_dst)
 {
-    uint8_t *out_start = out;
+    uint8_t *out_start = iter_dst;
     int64_t chunk_size = 1 << 18;
+    // necessary for int64?
     for (int64_t start = 0; start < len; start += chunk_size)
     {
         int64_t remaining = std::min(chunk_size, len - start);
-        uint8_t *marker = out;
-        out += 3;
+        uint8_t *marker = iter_dst;
+        iter_dst += 3;
 
-        cborio::HuffmanEncoder encoder(out);
+        cborio::HuffmanEncoder encoder(iter_dst);
         for (int64_t i = 0; i < remaining; ++i)
         {
-            encoder.scan(buf[i]);
+            encoder.scan(iter_src[i]);
         }
         encoder.buildTable();
         for (int64_t i = 0; i < remaining; ++i)
         {
-            encoder.encode(buf[i]);
+            encoder.encode(iter_src[i]);
         }
         int64_t chunk_written = encoder.finish();
         marker[0] = chunk_written & 0xff;
         marker[1] = (chunk_written >> 8) & 0xff;
         marker[2] = (chunk_written >> 16) & 0xff;
 
-        buf += remaining;
-        out += chunk_written;
+        iter_src += remaining;
+        iter_dst += chunk_written;
     }
-    return out - out_start;
+    return iter_dst - out_start;
 }
 
-void cborio::HuffmanDecompress(uint8_t *buf, int64_t len, uint8_t *out, int64_t out_len)
+void cborio::HuffmanDecompress(uint8_t *iter_src, int64_t len, uint8_t *iter_dst, int64_t out_len)
 {
     int64_t chunk_size = kMaxChunkSize;
-    uint8_t *buf_end = buf + len;
-    while (buf < buf_end)
+    uint8_t *buf_end = iter_src + len;
+    while (iter_src < buf_end)
     {
-        int compressed_size = buf[0] | (buf[1] << 8) | (buf[2] << 16);
-        buf += 3;
+        int compressed_size = iter_src[0] | (iter_src[1] << 8) | (iter_src[2] << 16);
+        iter_src += 3;
 
-        HuffmanDecoder decoder(buf, buf + compressed_size);
+        HuffmanDecoder decoder(iter_src, iter_src + compressed_size);
         decoder.readTable();
-        decoder.decode(out, out + std::min(chunk_size, out_len));
+        decoder.decode(iter_dst, iter_dst + std::min(chunk_size, out_len));
 
-        buf += compressed_size;
-        out += chunk_size;
+        iter_src += compressed_size;
+        iter_dst += chunk_size;
         out_len -= chunk_size;
     }
 }

@@ -59,7 +59,7 @@ public:
               typename std::enable_if<!refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
     cbostream &operator<<(T &&t)
     {
-        en << t;
+        serializeObj(t);
         return *this;
     }
 
@@ -79,7 +79,14 @@ private:
               typename std::enable_if<!refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
     void serializeObj(const T &obj, const char *fieldName = "")
     {
-        en << fieldName << obj;
+        if (*fieldName)
+        {
+            en << fieldName << obj;
+        }
+        else
+        {
+            en << obj;
+        }
     }
 
     template <typename T,
