@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
+#include <random>
 
 template <class T>
 std::string type_name()
@@ -88,6 +89,19 @@ std::unique_ptr<uint8_t> readhfile(const char *filename, int64_t &len)
     buf.reset(new uint8_t[len]);
     fread(buf.get(), 1, len, f);
     return buf;
+}
+
+template <typename T>
+void generate_rd(std::vector<T> &ar)
+{
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<T> dis(0.0, 100000.0);
+    for (size_t i = 0; i < ar.size(); ++i)
+    {
+        ar[i] = dis(gen);
+    }
 }
 
 #endif

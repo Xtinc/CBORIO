@@ -1,6 +1,5 @@
 #include "my_class.h"
 #include "gtest/gtest.h"
-#include <random>
 
 #define RO_DECODER_CLS fl.clear();
 #define RO_DECODER_RUN                          \
@@ -10,19 +9,6 @@
         cborio::decoder de(ro, hd);             \
         de.run();                               \
     } while (0);
-
-template <typename T>
-void generate_rd(std::vector<T> &ar)
-{
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<T> dis(0.0, 100000.0);
-    for (size_t i = 0; i < ar.size(); ++i)
-    {
-        ar[i] = dis(gen);
-    }
-}
 
 class CBOR_O_TestCase : public ::testing::Test
 {

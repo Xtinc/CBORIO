@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "cbor_file.h"
 #include "my_class.h"
+#include "utilities.h"
 
 int main(int argc, char **argv)
 {
@@ -55,4 +56,9 @@ TEST(BAGREC, stream_io)
     ro_file ro(cbs.data(), cbs.size());
     cborio::decoder de(ro, hd);
     de.run();
+}
+
+TEST(BAGREC, file_io)
+{
+    
 }

@@ -22,7 +22,7 @@ public:
     }
     void put_bytes(const unsigned char *data, size_t size) override
     {
-        for (int i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i)
         {
             std::cout << hex(*(data + i));
         }
@@ -46,7 +46,7 @@ public:
     void put_bytes(const unsigned char *data, size_t size) override
     {
         std::stringstream ss("");
-        for (int i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i)
         {
             ss << hex(*(data + i));
         }
@@ -113,7 +113,7 @@ public:
 
     void put_bytes(const unsigned char *data, size_t size) override
     {
-        for (auto i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i)
         {
             m_buffer.emplace_back(*(data + i));
         }
@@ -214,7 +214,7 @@ public:
     void on_bytes(unsigned char *data, size_t size)
     {
         printf("bytes with size %lld: ", size);
-        for (auto i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i)
         {
             printf("%2x", *(data + i));
         }

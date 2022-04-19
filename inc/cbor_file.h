@@ -3,10 +3,11 @@
 
 #include "simple_reflect.h"
 #include "encoder.h"
+#include <fstream>
 
 struct GFunc_out;
 
-class cbostream
+class cbostream : public std::ofstream
 {
 private:
     class cborbuf : public cborio::output
@@ -28,6 +29,8 @@ private:
             return m_buffer.size();
         }
 
+        void clear() { return m_buffer.clear(); }
+
         void put_byte(unsigned char value) override
         {
             m_buffer.emplace_back(value);
@@ -35,7 +38,7 @@ private:
 
         void put_bytes(const unsigned char *data, size_t size) override
         {
-            for (auto i = 0; i < size; ++i)
+            for (size_t i = 0; i < size; ++i)
             {
                 m_buffer.emplace_back(*(data + i));
             }
@@ -43,14 +46,16 @@ private:
     };
     cborbuf m_buf;
     cborio::encoder en;
+    unsigned int cnt;
 
 public:
-    cbostream() : m_buf(0), en(m_buf){};
+    cbostream() : m_buf(1024), en(m_buf), cnt(0){};
 
     template <typename T,
               typename std::enable_if<refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
     cbostream &operator<<(T &&t)
     {
+        ++cnt;
         serializeObj(t.second, t.first);
         return *this;
     }
@@ -59,6 +64,7 @@ public:
               typename std::enable_if<!refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
     cbostream &operator<<(T &&t)
     {
+        ++cnt;
         serializeObj(t);
         return *this;
     }
@@ -96,6 +102,8 @@ private:
         en << fieldName << (*fieldName ? ": {" : "{");
         refl::forEach(obj, GFunc_out(*this));
     }
+
+    void write_to_disk();
 };
 
 struct GFunc_out
