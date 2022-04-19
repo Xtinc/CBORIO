@@ -2,6 +2,7 @@
 #include "cbor_file.h"
 #include "my_class.h"
 #include "utilities.h"
+#include <thread>
 
 int main(int argc, char **argv)
 {
@@ -43,6 +44,19 @@ TEST(REFL_TEST, refk_struct)
 DEFINE_STRUCT(TEST_CBOR,
               (int)a,
               (double)b);
+
+TEST(BAGREC, time_data)
+{
+    char *td = new char[50];
+    for (int i = 0; i < 100; ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        write_date_time(td, 50);
+        std::cout << td << std::endl;
+    }
+
+    delete[] td;
+}
 
 TEST(BAGREC, stream_io)
 {
@@ -90,7 +104,7 @@ TEST(BAGREC, file_write)
 
 TEST(BAGREC, file_read)
 {
-     ro_disk_file roo("st.cbor");
+    ro_disk_file roo("st.cbor");
     if (roo.is_open())
     {
         hd_debug hdb;
