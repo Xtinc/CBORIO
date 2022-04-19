@@ -16,9 +16,9 @@ DEFINE_STRUCT(Rect,
               (Point)p1,
               (Point)p2,
               (uint32_t)color);
-DEFINE_STRUCT(Testwithfunc,
-              (int)a,
-              (Point)p);
+DEFINE_STRUCT(STRWNUM,
+              (std::string)str_a,
+              (double)num_b);
 
 TEST(REFL_TEST, refk_struct)
 {
@@ -58,7 +58,44 @@ TEST(BAGREC, stream_io)
     de.run();
 }
 
-TEST(BAGREC, file_io)
+TEST(BAGREC, file_write)
 {
-    
+    std::mt19937 gen{std::random_device{}()};
+    std::uniform_int_distribution<int> dis_len(0, 1000);
+    std::uniform_int_distribution<int> dis_char{'a', 'z'};
+    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
+
+    STRWNUM stw;
+    cbostream cbs;
+    cbs.open("st.cbor", std::ofstream::binary);
+
+    Timer timer;
+    size_t cnt = 0;
+    for (int i = 0; i < 10000; ++i)
+    {
+        std::string str(dis_len(gen), '\0');
+        for (auto &j : str)
+        {
+            j = static_cast<char>(dis_char(gen));
+        }
+        double d = dis_flt(gen);
+        stw = {str, d};
+        cnt = cnt + 8 + str.size();
+        cbs << REFL(stw);
+    }
+    double elapsed = timer.elapsed() / 1000;
+    printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
+    printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (cnt / (1024. * 1024.)) / elapsed);
+}
+
+TEST(BAGREC, file_read)
+{
+     ro_disk_file roo("st.cbor");
+    if (roo.is_open())
+    {
+        hd_debug hdb;
+        cborio::decoder de(roo, hdb);
+        de.run();
+        roo.close();
+    }
 }

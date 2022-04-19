@@ -5,6 +5,8 @@
 #include "encoder.h"
 #include <fstream>
 
+constexpr int m_buffer_size = 4096;
+
 struct GFunc_out;
 
 class cbostream : public std::ofstream
@@ -17,7 +19,9 @@ private:
 
     public:
         cborbuf(unsigned int capacity)
-            : m_buffer(capacity, 0){};
+        {
+            m_buffer.reserve(capacity);
+        };
 
         const unsigned char *data() const
         {
@@ -49,7 +53,7 @@ private:
     unsigned int cnt;
 
 public:
-    cbostream() : m_buf(1024), en(m_buf), cnt(0){};
+    cbostream() : m_buf(m_buffer_size), en(m_buf), cnt(0){};
 
     template <typename T,
               typename std::enable_if<refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
@@ -57,6 +61,7 @@ public:
     {
         ++cnt;
         serializeObj(t.second, t.first);
+        write_to_disk();
         return *this;
     }
 
@@ -66,6 +71,7 @@ public:
     {
         ++cnt;
         serializeObj(t);
+        write_to_disk();
         return *this;
     }
 
@@ -99,8 +105,9 @@ private:
               typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
     void serializeObj(const T &obj, const char *fieldName = "")
     {
-        en << fieldName << (*fieldName ? ": {" : "{");
+        en << fieldName << "{";
         refl::forEach(obj, GFunc_out(*this));
+        en << "}";
     }
 
     void write_to_disk();
