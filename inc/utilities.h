@@ -9,13 +9,13 @@
 #include <chrono>
 #include <thread>
 
-long long get_date_time()
+inline long long get_date_time()
 {
     auto now = std::chrono::high_resolution_clock::now();
     return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 }
 
-void print_date_time(long long ms_since_epoch, char *buff, size_t buff_size)
+inline void print_date_time(long long ms_since_epoch, char *buff, size_t buff_size)
 {
     time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
     tm time_info;
@@ -25,12 +25,12 @@ void print_date_time(long long ms_since_epoch, char *buff, size_t buff_size)
              time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000);
 }
 
-unsigned int get_thread_name()
+inline unsigned int get_thread_name()
 {
     return static_cast<unsigned int>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
 }
 
-void print_thread_name(unsigned int thread_id, char *buffer, unsigned long long length, bool right_align_hex_id = true)
+inline void print_thread_name(unsigned int thread_id, char *buffer, unsigned long long length, bool right_align_hex_id = true)
 {
     if (right_align_hex_id)
     {

@@ -11,13 +11,6 @@ int main(int argc, char **argv)
     return RUN_ALL_TESTS();
 }
 
-class BAGREC_TestCase : public ::testing::Test
-{
-public:
-    BAGREC_TestCase() {}
-    cbostream cbs;
-};
-
 DEFINE_STRUCT(Point,
               (double)x,
               (double)y);
@@ -78,7 +71,7 @@ TEST(BAGREC, stream_io)
 {
     TEST_CBOR tcb = {1, 8.9};
     // encoder
-    cbostream cbs;
+    recfile cbs(getFILE());
     uint64_t ces = 887;
     cbs << REFL(tcb) << "cessjo" << 1 << 5.599 << -1 << REFL(ces) << tcb;
     // decoder
@@ -88,7 +81,7 @@ TEST(BAGREC, stream_io)
     de.run();
 }
 
-TEST(BAGREC, file_write)
+void test_file_write()
 {
     std::mt19937 gen{std::random_device{}()};
     std::uniform_int_distribution<int> dis_len(0, 1000);
@@ -96,8 +89,7 @@ TEST(BAGREC, file_write)
     std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
 
     STRWNUM stw;
-    cbostream cbs;
-    cbs.open("st.cbor", std::ofstream::binary);
+    recfile cbs(getFILE());
 
     Timer timer;
     size_t cnt = 0;
@@ -116,6 +108,28 @@ TEST(BAGREC, file_write)
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
     printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (cnt / (1024. * 1024.)) / elapsed);
+}
+
+TEST(BAGREC, file_write)
+{
+    test_file_write();
+}
+
+TEST(BAGREC, file_write_md)
+{
+    std::thread th1([]()
+                    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        test_file_write(); });
+    std::thread th2([]()
+                    { test_file_write(); });
+    std::thread th3([]()
+                    {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        test_file_write(); });
+    th1.join();
+    th2.join();
+    th3.join();
 }
 
 TEST(BAGREC, file_read)

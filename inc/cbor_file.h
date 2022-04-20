@@ -4,6 +4,13 @@
 #include "simple_reflect.h"
 #include "encoder.h"
 #include <cstdio>
+#include <memory>
+
+inline FILE *&getFILE()
+{
+    static FILE *inst = fopen("st.cbor", "wb");
+    return inst;
+}
 
 constexpr int m_buffer_size = 4096;
 
@@ -51,10 +58,9 @@ private:
     cborbuf m_buf;
     cborio::encoder en;
     FILE *mpFile;
-    bool m_open;
 
 public:
-    recfile() : m_buf(m_buffer_size), en(m_buf), m_open(false){};
+    recfile(FILE *fp) : m_buf(m_buffer_size), en(m_buf), mpFile(fp){};
 
     template <typename T,
               typename std::enable_if<refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
@@ -75,12 +81,6 @@ public:
         write_to_disk();
         return *this;
     }
-
-    bool open(const char *filename);
-
-    void close();
-
-    bool is_open() const { return m_open; }
 
     const unsigned char *data() const
     {

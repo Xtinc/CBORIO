@@ -1,4 +1,5 @@
 #include "cbor_file.h"
+#include "utilities.h"
 /*
 void cbostream::write_to_disk()
 {
@@ -12,22 +13,16 @@ void cbostream::write_to_disk()
     }
 }*/
 
-bool recfile::open(const char *filename)
+void recfile::set_date_thread()
 {
-    mpFile = fopen(filename, "wb");
-    m_open = mpFile == nullptr ? false : true;
-    return m_open;
+    en << get_date_time() << get_thread_name();
 }
 
-void recfile::close()
+void recfile::write_to_disk()
 {
-    if (m_open)
+    if (getFILE())
     {
-        fclose(mpFile);
-        mpFile = nullptr;
+        fwrite(m_buf.data(), sizeof(unsigned char), m_buf.size(), getFILE());
     }
-}
-
-void recfile::write_to_disk(){
-    
+    m_buf.clear();
 }
