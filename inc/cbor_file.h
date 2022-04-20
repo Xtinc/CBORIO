@@ -3,13 +3,13 @@
 
 #include "simple_reflect.h"
 #include "encoder.h"
-#include <fstream>
+#include <cstdio>
 
 constexpr int m_buffer_size = 4096;
 
 struct GFunc_out;
 
-class cbostream : public std::ofstream
+class recfile
 {
 private:
     class cborbuf : public cborio::output
@@ -50,16 +50,17 @@ private:
     };
     cborbuf m_buf;
     cborio::encoder en;
-    unsigned int cnt;
+    FILE *mpFile;
+    bool m_open;
 
 public:
-    cbostream() : m_buf(m_buffer_size), en(m_buf), cnt(0){};
+    recfile() : m_buf(m_buffer_size), en(m_buf), m_open(false){};
 
     template <typename T,
               typename std::enable_if<refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
-    cbostream &operator<<(T &&t)
+    recfile &operator<<(T &&t)
     {
-        ++cnt;
+        set_date_thread();
         serializeObj(t.second, t.first);
         write_to_disk();
         return *this;
@@ -67,13 +68,19 @@ public:
 
     template <typename T,
               typename std::enable_if<!refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
-    cbostream &operator<<(T &&t)
+    recfile &operator<<(T &&t)
     {
-        ++cnt;
+        set_date_thread();
         serializeObj(t);
         write_to_disk();
         return *this;
     }
+
+    bool open(const char *filename);
+
+    void close();
+
+    bool is_open() const { return m_open; }
 
     const unsigned char *data() const
     {
@@ -110,16 +117,18 @@ private:
         en << "}";
     }
 
+    void set_date_thread();
+
     void write_to_disk();
 };
 
 struct GFunc_out
 {
 private:
-    cbostream &out;
+    recfile &out;
 
 public:
-    GFunc_out(cbostream &_os) : out(_os)
+    GFunc_out(recfile &_os) : out(_os)
     {
     }
     template <typename Name, typename Valu>

@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "compress.h"
-#include "utilities.h"
+#include "test_tools.h"
 
 bool testhuffman(uint8_t *buf, uint8_t *out, int64_t len)
 {

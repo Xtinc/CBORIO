@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "cbor_file.h"
 #include "my_class.h"
+#include "test_tools.h"
 #include "utilities.h"
 #include <thread>
 
@@ -9,6 +10,13 @@ int main(int argc, char **argv)
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
+class BAGREC_TestCase : public ::testing::Test
+{
+public:
+    BAGREC_TestCase() {}
+    cbostream cbs;
+};
 
 DEFINE_STRUCT(Point,
               (double)x,
@@ -45,16 +53,24 @@ DEFINE_STRUCT(TEST_CBOR,
               (int)a,
               (double)b);
 
-TEST(BAGREC, time_data)
+TEST(BAGREC, sio_time)
 {
     char *td = new char[50];
     for (int i = 0; i < 100; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        write_date_time(td, 50);
+        print_date_time(get_date_time(), td, 50);
         std::cout << td << std::endl;
     }
 
+    delete[] td;
+}
+
+TEST(BAGREC, sio_thread)
+{
+    char *td = new char[50];
+    print_thread_name(get_thread_name(), td, 50);
+    std::cout << td << std::endl;
     delete[] td;
 }
 

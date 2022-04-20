@@ -1,27 +1,13 @@
-#ifndef CBOR_UTILITIES_H
-#define CBOR_UTILITIES_H
+#ifndef TEST_TOOLS_H
+#define TEST_TOOLS_H
 
-#include <string>
-#ifndef _MSC_VER
-#include <cxxabi.h>
-#endif
+#include <random>
 #include <iostream>
 #include <iomanip>
 #include <chrono>
-#include <random>
-
-void write_date_time(char *buff, size_t buff_size)
-{
-    auto now = std::chrono::high_resolution_clock::now();
-    long long ms_since_epoch =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
-    tm time_info;
-    localtime_r(&sec_since_epoch, &time_info);
-    snprintf(buff, buff_size, "%04d%02d%02d_%02d%02d%02d.%03lld",
-             1900 + time_info.tm_year, 1 + time_info.tm_mon, time_info.tm_mday,
-             time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000);
-}
+#ifndef _MSC_VER
+#include <cxxabi.h>
+#endif
 
 template <class T>
 std::string type_name()
