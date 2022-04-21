@@ -71,14 +71,8 @@ TEST(BAGREC, stream_io)
 {
     TEST_CBOR tcb = {1, 8.9};
     // encoder
-    recfile cbs(getFILE());
     uint64_t ces = 887;
-    cbs << REFL(tcb) << "cessjo" << 1 << 5.599 << -1 << REFL(ces) << tcb;
-    // decoder
-    hd_debug hd;
-    ro_file ro(cbs.data(), cbs.size());
-    cborio::decoder de(ro, hd);
-    de.run();
+    CBSLOG << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
 }
 
 void test_file_write()

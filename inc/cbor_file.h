@@ -5,6 +5,10 @@
 #include "encoder.h"
 #include <cstdio>
 #include <memory>
+#include <sstream>
+
+#define CBSLOG reconsole(__FILE__, __LINE__)
+
 
 inline FILE *&getFILE()
 {
@@ -13,6 +17,35 @@ inline FILE *&getFILE()
 }
 
 constexpr int m_buffer_size = 4096;
+
+class reconsole
+{
+public:
+    reconsole(const char *file, unsigned line) : _file(file), _line(line) {}
+    ~reconsole() noexcept(false)
+    {
+        printf("%s", _ss.str().c_str());
+    };
+
+    template <typename T>
+    reconsole &operator<<(T &&t)
+    {
+        _ss << t;
+        return *this;
+    }
+
+    // std::endl and other iomanip:s.
+    reconsole &operator<<(std::ostream &(*f)(std::ostream &))
+    {
+        f(_ss);
+        return *this;
+    }
+
+private:
+    const char *_file;
+    unsigned _line;
+    std::ostringstream _ss;
+};
 
 struct GFunc_out;
 
@@ -66,7 +99,6 @@ public:
               typename std::enable_if<refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
     recfile &operator<<(T &&t)
     {
-        set_date_thread();
         serializeObj(t.second, t.first);
         write_to_disk();
         return *this;
@@ -76,20 +108,9 @@ public:
               typename std::enable_if<!refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
     recfile &operator<<(T &&t)
     {
-        set_date_thread();
         serializeObj(t);
         write_to_disk();
         return *this;
-    }
-
-    const unsigned char *data() const
-    {
-        return m_buf.data();
-    }
-
-    size_t size() const
-    {
-        return m_buf.size();
     }
 
 private:
