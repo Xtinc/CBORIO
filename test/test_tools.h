@@ -52,9 +52,9 @@ inline HexCharStruct hex(unsigned char _c)
 // http://mattmahoney.net/dc/textdata.html
 struct Timer
 {
-    Timer() : time_(std::chrono::high_resolution_clock::now()) {}
-    double elapsed() const { return std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - time_).count(); }
-    std::chrono::high_resolution_clock::time_point time_;
+    Timer() : time_(std::chrono::system_clock::now()) {}
+    double elapsed() const { return std::chrono::duration<double, std::milli>(std::chrono::system_clock::now() - time_).count(); }
+    std::chrono::system_clock::time_point time_;
 };
 
 int checkBytes(uint8_t *buf, uint8_t *actual, int64_t len)

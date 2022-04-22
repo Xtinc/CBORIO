@@ -79,9 +79,14 @@ TEST(BAGREC, stream_io)
 {
     INIT_REC();
     TEST_CBOR tcb = {1, 8.9};
-    // encoder
     uint64_t ces = 887;
-    RECDSK << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+    Timer timer;
+    for (int i = 0; i < 10000; ++i)
+    {
+        RECDSK << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+    }
+    double elapsed = timer.elapsed();
+    printf("%.2lf msecond", elapsed);
 }
 
 void test_console_write()
