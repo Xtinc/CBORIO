@@ -1,8 +1,7 @@
 #include "gtest/gtest.h"
-#include "cbor_file.h"
+#include "reclog.h"
 #include "my_class.h"
 #include "test_tools.h"
-#include "utilities.h"
 #include <thread>
 
 int main(int argc, char **argv)
@@ -67,23 +66,33 @@ TEST(BAGREC, sio_thread)
     delete[] td;
 }
 
+TEST(BAGREC, preamble)
+{
+    print_header();
+    char preamble_buffer[REC_PREAMBLE_WIDTH];
+    print_preamble(preamble_buffer, sizeof(preamble_buffer), __FILE__, __LINE__);
+    printf("%s", preamble_buffer);
+    fflush(stdout);
+}
+
 TEST(BAGREC, stream_io)
 {
+    INIT_REC();
     TEST_CBOR tcb = {1, 8.9};
     // encoder
     uint64_t ces = 887;
-    CBSLOG << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+    RECDSK << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
 }
 
 void test_file_write()
 {
+    INIT_REC();
     std::mt19937 gen{std::random_device{}()};
     std::uniform_int_distribution<int> dis_len(0, 1000);
     std::uniform_int_distribution<int> dis_char{'a', 'z'};
     std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
 
     STRWNUM stw;
-    recfile cbs(getFILE());
 
     Timer timer;
     size_t cnt = 0;
@@ -97,7 +106,7 @@ void test_file_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        cbs << REFL(stw);
+        RECDSK << REFL(stw);
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);

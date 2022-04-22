@@ -1,20 +1,13 @@
-#ifndef CBOR_FILE_H
-#define CBOR_FILE_H
+#ifndef CBOR_RECLOG_H
+#define CBOR_RECLOG_H
 
 #include "simple_reflect.h"
 #include "encoder.h"
-#include <cstdio>
-#include <memory>
+#include "utilities.h"
 #include <sstream>
 
-#define CBSLOG reconsole(__FILE__, __LINE__)
-
-
-inline FILE *&getFILE()
-{
-    static FILE *inst = fopen("st.cbor", "wb");
-    return inst;
-}
+#define RECLOG reconsole(__FILE__, __LINE__)
+#define RECDSK recfile(getFILE())
 
 constexpr int m_buffer_size = 4096;
 
@@ -24,7 +17,9 @@ public:
     reconsole(const char *file, unsigned line) : _file(file), _line(line) {}
     ~reconsole() noexcept(false)
     {
-        printf("%s", _ss.str().c_str());
+        char preamble_buffer[REC_PREAMBLE_WIDTH];
+        print_preamble(preamble_buffer, sizeof(preamble_buffer), _file, _line);
+        printf("%s%s\n", preamble_buffer, _ss.str().c_str());
     };
 
     template <typename T>
