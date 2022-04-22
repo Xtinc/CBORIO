@@ -128,9 +128,9 @@ private:
               typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
     void serializeObj(const T &obj, const char *fieldName = "")
     {
-        en << fieldName << "{";
+        en << fieldName << '{';
         refl::forEach(obj, GFunc_out(*this));
-        en << "}";
+        en << '}';
     }
 
     void set_date_thread();
