@@ -4,7 +4,7 @@
 FILE *RECONFIG::fp = nullptr;
 long long RECONFIG::start_time = 0;
 
-void INIT_REC(const char* filename)
+void INIT_REC(const char *filename)
 {
     std::call_once(rec_init_flag, init_impl, filename);
 }
@@ -19,7 +19,7 @@ reconsole::~reconsole()
     else
     {
         char preamble_buffer[REC_PREAMBLE_WIDTH];
-        print_preamble(preamble_buffer, sizeof(preamble_buffer), _file, _line);
+        print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
         printf("%s%s\n", preamble_buffer, _ss.str().c_str());
     }
 }

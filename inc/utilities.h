@@ -57,6 +57,29 @@ namespace
         return static_cast<unsigned int>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
     }
 
+    inline const char *get_verbosity_name(int verbosity)
+    {
+        const char *name = nullptr;
+        if (verbosity <= -3)
+        {
+            name = "FATL";
+        }
+        else if (verbosity == -2)
+        {
+            name = "ERR";
+        }
+        else if (verbosity == -1)
+        {
+            name = "WARN";
+        }
+        else if (verbosity == 0)
+        {
+            name = "INFO";
+        }
+
+        return name;
+    }
+
     inline void print_thread_name(unsigned int thread_id, char *buffer, unsigned long long length, bool right_align_hex_id = true)
     {
         if (right_align_hex_id)
@@ -93,7 +116,7 @@ namespace
     }
 
     // focus on thread safety.
-    inline void print_preamble(char *out_buff, size_t out_buff_size, const char *file, unsigned int line)
+    inline void print_preamble(char *out_buff, size_t out_buff_size, int verbosity, const char *file, unsigned int line)
     {
         if (out_buff_size == 0)
         {
@@ -110,6 +133,8 @@ namespace
 
         char thread_name[REC_THREADNAME_WIDTH + 1] = {0};
         print_thread_name(get_thread_name(), thread_name, REC_THREADNAME_WIDTH + 1, true);
+
+        const char *level_buff = get_verbosity_name(verbosity);
 
         file = filename(file);
 
@@ -137,7 +162,7 @@ namespace
         update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:%-6u ",
                               REC_FILENAME_WIDTH, shortened_filename, line));
         // level
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%1d", 1));
+        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%4s", level_buff));
         // delimiter
         update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "| "));
     }

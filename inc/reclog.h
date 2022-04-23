@@ -5,7 +5,18 @@
 #include "encoder.h"
 #include <sstream>
 
-#define RECLOG reconsole(RECONFIG::fp, __FILE__, __LINE__)
+enum NamedVerbosity : int
+{
+    Verbosity_FATAL = -3,
+    Verbosity_ERROR = -2,
+    Verbosity_WARNING = -1,
+    Verbosity_INFO = 0,
+};
+
+//#define RECLOG reconsole(RECONFIG::fp, __FILE__, __LINE__)
+
+#define RECVLOG_S(verbosity) reconsole(RECONFIG::fp, verbosity, __FILE__, __LINE__)
+#define RECLOG(verbosity_name) RECVLOG_S(Verbosity_##verbosity_name)
 
 void INIT_REC(const char *filename = "");
 
@@ -58,12 +69,13 @@ private:
 
 private:
     const char *_file;
-    unsigned _line;
+    unsigned int _line;
+    int m_verbosity;
     std::ostringstream _ss;
 
 public:
-    reconsole(FILE *fp, const char *file, unsigned line)
-        : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file), _line(line) {}
+    reconsole(FILE *fp, int verbosity, const char *file, unsigned line)
+        : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file), _line(line), m_verbosity(verbosity) {}
     ~reconsole();
 
     template <typename T,

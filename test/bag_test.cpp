@@ -71,7 +71,7 @@ TEST(BAGREC, preamble)
 {
     print_header();
     char preamble_buffer[REC_PREAMBLE_WIDTH];
-    print_preamble(preamble_buffer, sizeof(preamble_buffer), __FILE__, __LINE__);
+    print_preamble(preamble_buffer, sizeof(preamble_buffer), Verbosity_INFO, __FILE__, __LINE__);
     printf("%s", preamble_buffer);
     fflush(stdout);
 }
@@ -84,7 +84,22 @@ TEST(BAGREC, stream_io)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        RECLOG(INFO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+    }
+    double elapsed = timer.elapsed();
+    printf("%.2lf usecond\n", elapsed / 10.0);
+    fflush(stdout);
+}
+
+TEST(BAGREC, file_io)
+{
+    INIT_REC("st.cbor");
+    TEST_CBOR tcb = {1, 8.9};
+    uint64_t ces = 887;
+    Timer timer;
+    for (int i = 0; i < 10000; ++i)
+    {
+        RECLOG(INFO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond\n", elapsed / 10.0);
@@ -112,7 +127,7 @@ void test_console_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECLOG << stw;
+        RECLOG(INFO) << stw;
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
@@ -140,7 +155,7 @@ void test_file_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECLOG << REFL(stw);
+        RECLOG(INFO) << REFL(stw);
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
