@@ -79,7 +79,7 @@ TEST(BAGREC, preamble)
 TEST(BAGREC, console_format_print)
 {
     RECLOG::INIT_REC();
-    float lots = 3.1415926535;
+    float lots = 3.141592f;
     float little1 = 2.25;
     float little2 = 1.5;
     float whole = 4.00000;
