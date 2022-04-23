@@ -76,7 +76,7 @@ TEST(BAGREC, preamble)
     fflush(stdout);
 }
 
-TEST(BAGREC, stream_io)
+void test_stream_io()
 {
     INIT_REC();
     TEST_CBOR tcb = {1, 8.9};
@@ -91,7 +91,22 @@ TEST(BAGREC, stream_io)
     fflush(stdout);
 }
 
-TEST(BAGREC, file_io)
+TEST(BAGREC, stream_io_speed)
+{
+    test_stream_io();
+}
+
+TEST(BAGREC, stream_io_speed_md)
+{
+    std::thread th1([]()
+                    { test_stream_io(); });
+    std::thread th2([]()
+                    { test_stream_io(); });
+    th1.join();
+    th2.join();
+}
+
+TEST(BAGREC, file_io_speed)
 {
     INIT_REC("st.cbor");
     TEST_CBOR tcb = {1, 8.9};
