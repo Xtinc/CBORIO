@@ -21,7 +21,7 @@ namespace
 {
     constexpr int REC_THREADNAME_WIDTH = 8;
     constexpr int REC_FILENAME_WIDTH = 23;
-    constexpr int REC_PREAMBLE_WIDTH = 53 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
+    constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
     std::once_flag rec_init_flag;
 
     inline const char *filename(const char *path)
@@ -108,11 +108,10 @@ namespace
             }
         };
         update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "date       time         "));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "(uptime   ) "));
+        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "(   uptime) "));
         update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "[%-*s]", REC_THREADNAME_WIDTH, "threadid"));
         update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:line   ", REC_FILENAME_WIDTH, "file"));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "l"));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "| "));
+        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "   l |"));
     }
 
     // focus on thread safety.
@@ -162,9 +161,9 @@ namespace
         update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:%-6u ",
                               REC_FILENAME_WIDTH, shortened_filename, line));
         // level
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%4s", level_buff));
+        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%4s | ", level_buff));
         // delimiter
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "| "));
+        // update_bytes(snprintf(out_buff + pos, out_buff_size - pos, " | "));
     }
 
     inline void print_header()

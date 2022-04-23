@@ -5,262 +5,170 @@
 #include "encoder.h"
 #include <sstream>
 
-enum NamedVerbosity : int
+#define RECVLOG_S(verbosity) RECLOG::reclogger(RECONFIG::fp, verbosity, __FILE__, __LINE__)
+#define RECLOG(verbosity_name) RECVLOG_S(RECLOG::Verbosity_##verbosity_name)
+
+namespace RECLOG
 {
-    Verbosity_FATAL = -3,
-    Verbosity_ERROR = -2,
-    Verbosity_WARNING = -1,
-    Verbosity_INFO = 0,
-};
 
-//#define RECLOG reconsole(RECONFIG::fp, __FILE__, __LINE__)
+    enum NamedVerbosity : int
+    {
+        Verbosity_FATAL = -3,
+        Verbosity_ERROR = -2,
+        Verbosity_WARNING = -1,
+        Verbosity_INFO = 0,
+    };
 
-#define RECVLOG_S(verbosity) reconsole(RECONFIG::fp, verbosity, __FILE__, __LINE__)
-#define RECLOG(verbosity_name) RECVLOG_S(Verbosity_##verbosity_name)
+    void INIT_REC(const char *filename = "");
 
-void INIT_REC(const char *filename = "");
+    constexpr int m_buffer_size = 4096;
 
-constexpr int m_buffer_size = 4096;
+    struct GFunc_out;
 
-struct GFunc_out;
-
-class reconsole
-{
-private:
-    class cborbuf : public cborio::output
+    class reclogger
     {
     private:
-        std::vector<unsigned char> m_buffer;
+        class cborbuf : public cborio::output
+        {
+        private:
+            std::vector<unsigned char> m_buffer;
+
+        public:
+            cborbuf(unsigned int capacity)
+            {
+                m_buffer.reserve(capacity);
+            };
+
+            const unsigned char *data() const
+            {
+                return m_buffer.data();
+            }
+
+            size_t size() const
+            {
+                return m_buffer.size();
+            }
+
+            void clear() { return m_buffer.clear(); }
+
+            void put_byte(unsigned char value) override
+            {
+                m_buffer.emplace_back(value);
+            }
+
+            void put_bytes(const unsigned char *data, size_t size) override
+            {
+                for (size_t i = 0; i < size; ++i)
+                {
+                    m_buffer.emplace_back(*(data + i));
+                }
+            };
+        };
+        cborbuf m_buf;
+        cborio::encoder en;
+        FILE *mpFile;
+
+    private:
+        const char *_file;
+        unsigned int _line;
+        int m_verbosity;
+        std::ostringstream _ss;
 
     public:
-        cborbuf(unsigned int capacity)
-        {
-            m_buffer.reserve(capacity);
-        };
+        reclogger(FILE *fp, int verbosity, const char *file, unsigned line)
+            : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file), _line(line), m_verbosity(verbosity) {}
+        ~reclogger();
 
-        const unsigned char *data() const
+        template <typename T,
+                  typename std::enable_if<refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
+        reclogger &operator<<(T &&t)
         {
-            return m_buffer.data();
+            serializeObj(t.st_t, t.st_name);
+            return *this;
         }
 
-        size_t size() const
+        template <typename T,
+                  typename std::enable_if<!refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
+        reclogger &operator<<(T &&t)
         {
-            return m_buffer.size();
+            serializeObj(t);
+            return *this;
         }
 
-        void clear() { return m_buffer.clear(); }
-
-        void put_byte(unsigned char value) override
+        // std::endl and other iomanip:s.
+        reclogger &operator<<(std::ios_base &(*f)(std::ios_base &))
         {
-            m_buffer.emplace_back(value);
-        }
-
-        void put_bytes(const unsigned char *data, size_t size) override
-        {
-            for (size_t i = 0; i < size; ++i)
+            if (mpFile == nullptr)
             {
-                m_buffer.emplace_back(*(data + i));
+                f(_ss);
             }
-        };
-    };
-    cborbuf m_buf;
-    cborio::encoder en;
-    FILE *mpFile;
+            return *this;
+        }
 
-private:
-    const char *_file;
-    unsigned int _line;
-    int m_verbosity;
-    std::ostringstream _ss;
-
-public:
-    reconsole(FILE *fp, int verbosity, const char *file, unsigned line)
-        : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file), _line(line), m_verbosity(verbosity) {}
-    ~reconsole();
-
-    template <typename T,
-              typename std::enable_if<refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
-    reconsole &operator<<(T &&t)
-    {
-        serializeObj(t.st_t, t.st_name);
-        return *this;
-    }
-
-    template <typename T,
-              typename std::enable_if<!refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
-    reconsole &operator<<(T &&t)
-    {
-        serializeObj(t);
-        return *this;
-    }
-
-private:
-    friend struct GFunc_out;
-    template <typename T,
-              typename std::enable_if<!refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
-    void serializeObj(const T &obj, const char *fieldName = "")
-    {
-        if (mpFile == nullptr)
+    private:
+        friend struct GFunc_out;
+        template <typename T,
+                  typename std::enable_if<!refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
+        void serializeObj(const T &obj, const char *fieldName = "")
         {
-            if (*fieldName)
+            if (mpFile == nullptr)
             {
-                _ss << fieldName << obj;
+                if (*fieldName)
+                {
+                    _ss << fieldName << obj;
+                }
+                else
+                {
+                    _ss << obj;
+                }
             }
             else
             {
-                _ss << obj;
+                if (*fieldName)
+                {
+                    en << fieldName << obj;
+                }
+                else
+                {
+                    en << obj;
+                }
             }
         }
-        else
+
+        template <typename T,
+                  typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
+        void serializeObj(const T &obj, const char *fieldName = "")
         {
-            if (*fieldName)
+            if (mpFile == nullptr)
             {
-                en << fieldName << obj;
+                _ss << fieldName << '{';
+                refl::forEach(obj, GFunc_out(*this));
+                _ss << '}';
             }
             else
             {
-                en << obj;
+                en << fieldName << '{';
+                refl::forEach(obj, GFunc_out(*this));
+                en << '}';
             }
         }
-    }
+    };
 
-    template <typename T,
-              typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
-    void serializeObj(const T &obj, const char *fieldName = "")
-    {
-        if (mpFile == nullptr)
-        {
-            _ss << fieldName << '{';
-            refl::forEach(obj, GFunc_out(*this));
-            _ss << '}';
-        }
-        else
-        {
-            en << fieldName << '{';
-            refl::forEach(obj, GFunc_out(*this));
-            en << '}';
-        }
-    }
-
-    // std::endl and other iomanip:s.
-    reconsole &operator<<(std::ostream &(*f)(std::ostream &))
-    {
-        if (mpFile == nullptr)
-        {
-            f(_ss);
-        }
-        return *this;
-    }
-};
-/*
-class recfile
-{
-private:
-    class cborbuf : public cborio::output
+    struct GFunc_out
     {
     private:
-        std::vector<unsigned char> m_buffer;
+        reclogger &out;
 
     public:
-        cborbuf(unsigned int capacity)
+        GFunc_out(reclogger &_os) : out(_os)
         {
-            m_buffer.reserve(capacity);
-        };
-
-        const unsigned char *data() const
-        {
-            return m_buffer.data();
         }
-
-        size_t size() const
+        template <typename Name, typename Valu>
+        void operator()(Name &&fdname, Valu &&value)
         {
-            return m_buffer.size();
+            out.serializeObj(value, fdname);
         }
-
-        void clear() { return m_buffer.clear(); }
-
-        void put_byte(unsigned char value) override
-        {
-            m_buffer.emplace_back(value);
-        }
-
-        void put_bytes(const unsigned char *data, size_t size) override
-        {
-            for (size_t i = 0; i < size; ++i)
-            {
-                m_buffer.emplace_back(*(data + i));
-            }
-        };
     };
-    cborbuf m_buf;
-    cborio::encoder en;
-    FILE *mpFile;
 
-public:
-    recfile(FILE *fp) : m_buf(m_buffer_size), en(m_buf), mpFile(fp){};
-
-    template <typename T,
-              typename std::enable_if<refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
-    recfile &operator<<(T &&t)
-    {
-        serializeObj(t.second, t.first);
-        write_to_disk();
-        return *this;
-    }
-
-    template <typename T,
-              typename std::enable_if<!refl::is_pair<typename std::decay<T>::type>::value>::type * = nullptr>
-    recfile &operator<<(T &&t)
-    {
-        serializeObj(t);
-        write_to_disk();
-        return *this;
-    }
-
-private:
-    friend struct GFunc_out;
-    template <typename T,
-              typename std::enable_if<!refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
-    void serializeObj(const T &obj, const char *fieldName = "")
-    {
-        if (*fieldName)
-        {
-            en << fieldName << obj;
-        }
-        else
-        {
-            en << obj;
-        }
-    }
-
-    template <typename T,
-              typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
-    void serializeObj(const T &obj, const char *fieldName = "")
-    {
-        en << fieldName << '{';
-        refl::forEach(obj, GFunc_out(*this));
-        en << '}';
-    }
-
-    void set_date_thread();
-
-    void write_to_disk();
-};*/
-
-struct GFunc_out
-{
-private:
-    reconsole &out;
-
-public:
-    GFunc_out(reconsole &_os) : out(_os)
-    {
-    }
-    template <typename Name, typename Valu>
-    void operator()(Name &&fdname, Valu &&value)
-    {
-        out.serializeObj(value, fdname);
-    }
-};
-
+}
 #endif
