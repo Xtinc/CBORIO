@@ -3,11 +3,12 @@
 
 #include "simple_reflect.h"
 #include "encoder.h"
-#include "utilities.h"
 #include <sstream>
 
 #define RECLOG reconsole(nullptr, __FILE__, __LINE__)
 #define RECDSK reconsole(getFILE(), __FILE__, __LINE__)
+
+void INIT_REC();
 
 constexpr int m_buffer_size = 4096;
 
@@ -64,20 +65,7 @@ private:
 public:
     reconsole(FILE *fp, const char *file, unsigned line)
         : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file), _line(line) {}
-    ~reconsole() noexcept(false)
-    {
-        if (mpFile != nullptr)
-        {
-            en << get_date_time() << get_thread_name();
-            fwrite(m_buf.data(), sizeof(unsigned char), m_buf.size(), mpFile);
-        }
-        else
-        {
-            char preamble_buffer[REC_PREAMBLE_WIDTH];
-            print_preamble(preamble_buffer, sizeof(preamble_buffer), _file, _line);
-            printf("%s%s\n", preamble_buffer, _ss.str().c_str());
-        }
-    };
+    ~reconsole();
 
     template <typename T,
               typename std::enable_if<refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
@@ -101,13 +89,27 @@ private:
               typename std::enable_if<!refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
     void serializeObj(const T &obj, const char *fieldName = "")
     {
-        if (*fieldName)
+        if (mpFile == nullptr)
         {
-            en << fieldName << obj;
+            if (*fieldName)
+            {
+                _ss << fieldName << obj;
+            }
+            else
+            {
+                _ss << obj;
+            }
         }
         else
         {
-            en << obj;
+            if (*fieldName)
+            {
+                en << fieldName << obj;
+            }
+            else
+            {
+                en << obj;
+            }
         }
     }
 
@@ -115,9 +117,18 @@ private:
               typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
     void serializeObj(const T &obj, const char *fieldName = "")
     {
-        en << fieldName << '{';
-        refl::forEach(obj, GFunc_out(*this));
-        en << '}';
+        if (mpFile == nullptr)
+        {
+            _ss << fieldName << '{';
+            refl::forEach(obj, GFunc_out(*this));
+            _ss << '}';
+        }
+        else
+        {
+            en << fieldName << '{';
+            refl::forEach(obj, GFunc_out(*this));
+            en << '}';
+        }
     }
 
     // std::endl and other iomanip:s.

@@ -162,9 +162,4 @@ namespace
     }
 }
 
-inline void INIT_REC()
-{
-    std::call_once(rec_init_flag, init_impl);
-}
-
 #endif

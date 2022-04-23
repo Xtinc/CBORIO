@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "reclog.h"
 #include "my_class.h"
+#include "utilities.h"
 #include "test_tools.h"
 #include <thread>
 
