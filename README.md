@@ -8,4 +8,4 @@ CBORIO is a collect library which can do:
 
 - Huffman compression
 
-![logger_benchmark](C:\Users\xtc\Desktop\CBORIO\image\bench.png)
+![logger_benchmark](/image/bench.png)
