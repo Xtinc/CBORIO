@@ -71,14 +71,37 @@ TEST(BAGREC, preamble)
 {
     print_header();
     char preamble_buffer[REC_PREAMBLE_WIDTH];
-    print_preamble(preamble_buffer, sizeof(preamble_buffer), Verbosity_INFO, __FILE__, __LINE__);
+    print_preamble(preamble_buffer, sizeof(preamble_buffer), RECLOG::Verbosity_INFO, __FILE__, __LINE__);
     printf("%s", preamble_buffer);
     fflush(stdout);
 }
 
-TEST(BAGREC, stream_io)
+TEST(BAGREC, console_format_print)
 {
-    INIT_REC();
+    RECLOG::INIT_REC();
+    float lots = 3.1415926535;
+    float little1 = 2.25;
+    float little2 = 1.5;
+    float whole = 4.00000;
+
+    RECLOG(INFO) << "Some values with noshowpoint (the default)";
+
+    RECLOG(INFO) << "lots:    " << lots;
+    RECLOG(INFO) << "little1: " << little1;
+    RECLOG(INFO) << "little2: " << little2;
+    RECLOG(INFO) << "whole:   " << whole;
+
+    RECLOG(INFO) << "The same values with showpoint";
+
+    RECLOG(INFO) << "lots:    " << std::showpoint << lots;
+    RECLOG(INFO) << "little1: " << std::showpoint << little1;
+    RECLOG(INFO) << "little2: " << std::showpoint << little2;
+    RECLOG(INFO) << "whole:   " << std::showpoint << whole;
+}
+
+TEST(BAGREC, stream_io_speed)
+{
+    RECLOG::INIT_REC();
     TEST_CBOR tcb = {1, 8.9};
     uint64_t ces = 887;
     Timer timer;
@@ -91,9 +114,9 @@ TEST(BAGREC, stream_io)
     fflush(stdout);
 }
 
-TEST(BAGREC, file_io)
+TEST(BAGREC, file_io_speed)
 {
-    INIT_REC("st.cbor");
+    RECLOG::INIT_REC("st.cbor");
     TEST_CBOR tcb = {1, 8.9};
     uint64_t ces = 887;
     Timer timer;
@@ -164,19 +187,19 @@ void test_file_write()
 
 TEST(BAGREC, console_write)
 {
-    INIT_REC();
+    RECLOG::INIT_REC();
     test_console_write();
 }
 
 TEST(BAGREC, file_write)
 {
-    INIT_REC("st.cbor");
+    RECLOG::INIT_REC("st.cbor");
     test_file_write();
 }
 
 TEST(BAGREC, console_write_md)
 {
-    INIT_REC();
+    RECLOG::INIT_REC();
     std::thread th1([]()
                     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -194,7 +217,7 @@ TEST(BAGREC, console_write_md)
 
 TEST(BAGREC, file_write_md)
 {
-    INIT_REC("st.cbor");
+    RECLOG::INIT_REC("st.cbor");
     std::thread th1([]()
                     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

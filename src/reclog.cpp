@@ -4,12 +4,12 @@
 FILE *RECONFIG::fp = nullptr;
 long long RECONFIG::start_time = 0;
 
-void INIT_REC(const char *filename)
+void RECLOG::INIT_REC(const char *filename)
 {
     std::call_once(rec_init_flag, init_impl, filename);
 }
 
-reconsole::~reconsole()
+RECLOG::reclogger::~reclogger()
 {
     if (mpFile != nullptr)
     {
