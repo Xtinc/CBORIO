@@ -76,11 +76,7 @@ TEST(BAGREC, preamble)
     fflush(stdout);
 }
 
-<<<<<<< HEAD
-void test_stream_io()
-=======
 TEST(BAGREC, console_format_print)
->>>>>>> a180e873644545320993f28f175f91b2d862ebe9
 {
     RECLOG::INIT_REC();
     float lots = 3.1415926535;
@@ -118,24 +114,6 @@ TEST(BAGREC, stream_io_speed)
     fflush(stdout);
 }
 
-<<<<<<< HEAD
-TEST(BAGREC, stream_io_speed)
-{
-    test_stream_io();
-}
-
-TEST(BAGREC, stream_io_speed_md)
-{
-    std::thread th1([]()
-                    { test_stream_io(); });
-    std::thread th2([]()
-                    { test_stream_io(); });
-    th1.join();
-    th2.join();
-}
-
-=======
->>>>>>> a180e873644545320993f28f175f91b2d862ebe9
 TEST(BAGREC, file_io_speed)
 {
     RECLOG::INIT_REC("st.cbor");
