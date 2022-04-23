@@ -22,4 +22,4 @@ reconsole::~reconsole()
         print_preamble(preamble_buffer, sizeof(preamble_buffer), _file, _line);
         printf("%s%s\n", preamble_buffer, _ss.str().c_str());
     }
-};
+}

@@ -1,7 +1,7 @@
 #ifndef CBOR_UTILITIES_H
 #define CBOR_UTILITIES_H
 
-#include <string>
+#include <cstring>
 #ifdef _MSC_VER
 #include <direct.h>
 #define localtime_r(a, b) localtime_s(b, a) // No localtime_r with MSVC, but arguments are swapped for localtime_s
