@@ -154,13 +154,20 @@ using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
 
 namespace refl
 {
+    template <typename T>
+    struct refl_info_st
+    {
+        const char *st_name;
+        T st_t;
+    };
+
     template <typename>
-    struct is_pair : std::false_type
+    struct is_refl_info_st : std::false_type
     {
     };
 
-    template <typename T, typename U>
-    struct is_pair<std::pair<T, U>> : std::true_type
+    template <typename T>
+    struct is_refl_info_st<refl_info_st<T>> : std::true_type
     {
     };
 
@@ -197,9 +204,10 @@ namespace refl
 
     template <typename T>
     inline constexpr auto REFLINFO(const char *name, T &t)
-        -> std::pair<const char *, T>
+        -> refl_info_st<T>
     {
-        return std::make_pair(name, t);
+        refl_info_st<T> st = {name, t};
+        return st;
     }
 
     struct GFunc_out;

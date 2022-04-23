@@ -142,7 +142,7 @@ TEST(HUFFMAN_TEST, huffman_encode)
 {
     int64_t len;
     auto buf = readhfile("enwik8", len);
-    std::unique_ptr<uint8_t> out(new uint8_t[len]);
+    std::unique_ptr<uint8_t[]> out(new uint8_t[len]);
     for (int i = 1; i < 1000; i += 100)
     {
         EXPECT_EQ(testhuffman(buf.get(), out.get(), i), true);
@@ -155,7 +155,7 @@ TEST(HUFFMAN_TEST, huffman_speed)
     std::unique_ptr<uint8_t> buf = readhfile("danmu", len);
     // len = 10000;
     printf("Read %lld bytes\n", len);
-    std::unique_ptr<uint8_t> out;
+    std::unique_ptr<uint8_t[]> out;
     out.reset(new uint8_t[len]);
 
     int64_t encoded_size;

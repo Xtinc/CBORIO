@@ -86,7 +86,8 @@ TEST(BAGREC, stream_io)
         RECDSK << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
-    printf("%.2lf msecond", elapsed);
+    printf("%.2lf msecond\n", elapsed);
+    fflush(stdout);
 }
 
 void test_console_write()
