@@ -114,19 +114,64 @@ TEST(BAGREC, stream_io_speed)
     fflush(stdout);
 }
 
-TEST(BAGREC, file_io_speed)
+void test_stdfile_speed()
 {
-    RECLOG::INIT_REC("st.cbor");
+    std::ofstream out("stdout");
     TEST_CBOR tcb = {1, 8.9};
     uint64_t ces = 887;
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG(INFO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        out << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond\n", elapsed / 10.0);
     fflush(stdout);
+}
+
+void test_file_write_speed()
+{
+    RECLOG::INIT_REC("st.cbor");
+    TEST_CBOR tcb = {1, 8.9};
+    uint64_t ces = 887;
+    Timer timer;
+    unsigned int cnt = 0;
+    for (int i = 0; i < 10000; ++i)
+    {
+        cnt = cnt + 56;
+        RECLOG(INFO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+    }
+    double elapsed = timer.elapsed();
+    printf("%.2lf usecond\n", elapsed / 10.0);
+    elapsed = elapsed / 1000.0;
+    printf("%.2lf MB/s\n", (cnt / (1024. * 1024.)) / elapsed);
+    fflush(stdout);
+}
+
+TEST(BAGREC, std_file_speed)
+{
+    test_stdfile_speed();
+}
+
+TEST(BAGREC, file_io_speed)
+{
+    test_file_write_speed();
+}
+
+TEST(BAGREC, file_io_speed_md)
+{
+    std::thread th1([]()
+                    { test_file_write_speed(); });
+    std::thread th2([]()
+                    { test_file_write_speed(); });
+    std::thread th3([]()
+                    { test_file_write_speed(); });
+    std::thread th4([]()
+                    { test_file_write_speed(); });
+    th1.join();
+    th2.join();
+    th3.join();
+    th4.join();
 }
 
 void test_console_write()
