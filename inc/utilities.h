@@ -10,6 +10,13 @@
 #include <thread>
 #include <mutex>
 
+class RECONFIG
+{
+public:
+    static FILE *fp;
+    static long long start_time;
+};
+
 namespace
 {
     constexpr int REC_THREADNAME_WIDTH = 8;
@@ -62,18 +69,6 @@ namespace
         }
     }
 
-    inline FILE *&getFILE()
-    {
-        static FILE *inst = fopen("st.cbor", "wb");
-        return inst;
-    }
-
-    inline long long &getTIME_START()
-    {
-        static long long start_time = get_date_time();
-        return start_time;
-    }
-
     inline void print_preamble_header(char *out_buff, size_t out_buff_size)
     {
         if (out_buff_size == 0)
@@ -110,7 +105,7 @@ namespace
         tm time_info;
         localtime_r(&sec_since_epoch, &time_info);
 
-        auto uptime_ms = ms_since_epoch - getTIME_START();
+        auto uptime_ms = ms_since_epoch - RECONFIG::start_time;
         auto uptime_sec = static_cast<double>(uptime_ms) / 1000.0;
 
         char thread_name[REC_THREADNAME_WIDTH + 1] = {0};
@@ -154,10 +149,13 @@ namespace
         printf("%s\n", preamble_explain);
     }
 
-    inline void init_impl()
+    inline void init_impl(const char *filename)
     {
-        (void)getFILE();
-        (void)getTIME_START();
+        if (strlen(filename) != 0)
+        {
+            RECONFIG::fp = fopen(filename, "wb");
+        }
+        RECONFIG::start_time = get_date_time();
         print_header();
     }
 }

@@ -5,10 +5,9 @@
 #include "encoder.h"
 #include <sstream>
 
-#define RECLOG reconsole(nullptr, __FILE__, __LINE__)
-#define RECDSK reconsole(getFILE(), __FILE__, __LINE__)
+#define RECLOG reconsole(RECONFIG::fp, __FILE__, __LINE__)
 
-void INIT_REC();
+void INIT_REC(const char *filename = "");
 
 constexpr int m_buffer_size = 4096;
 

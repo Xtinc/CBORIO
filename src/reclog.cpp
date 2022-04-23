@@ -1,9 +1,12 @@
 #include "reclog.h"
 #include "utilities.h"
 
-void INIT_REC()
+FILE *RECONFIG::fp = nullptr;
+long long RECONFIG::start_time = 0;
+
+void INIT_REC(const char* filename)
 {
-    std::call_once(rec_init_flag, init_impl);
+    std::call_once(rec_init_flag, init_impl, filename);
 }
 
 reconsole::~reconsole()

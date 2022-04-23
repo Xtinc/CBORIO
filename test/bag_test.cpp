@@ -84,16 +84,15 @@ TEST(BAGREC, stream_io)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECDSK << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        RECLOG << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
-    printf("%.2lf msecond\n", elapsed);
+    printf("%.2lf usecond\n", elapsed / 10.0);
     fflush(stdout);
 }
 
 void test_console_write()
 {
-    INIT_REC();
     std::mt19937 gen{std::random_device{}()};
     std::uniform_int_distribution<int> dis_len(0, 1000);
     std::uniform_int_distribution<int> dis_char{'a', 'z'};
@@ -122,7 +121,6 @@ void test_console_write()
 
 void test_file_write()
 {
-    INIT_REC();
     std::mt19937 gen{std::random_device{}()};
     std::uniform_int_distribution<int> dis_len(0, 1000);
     std::uniform_int_distribution<int> dis_char{'a', 'z'};
@@ -142,7 +140,7 @@ void test_file_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECDSK << REFL(stw);
+        RECLOG << REFL(stw);
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
@@ -151,16 +149,19 @@ void test_file_write()
 
 TEST(BAGREC, console_write)
 {
+    INIT_REC();
     test_console_write();
 }
 
 TEST(BAGREC, file_write)
 {
+    INIT_REC("st.cbor");
     test_file_write();
 }
 
 TEST(BAGREC, console_write_md)
 {
+    INIT_REC();
     std::thread th1([]()
                     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -178,6 +179,7 @@ TEST(BAGREC, console_write_md)
 
 TEST(BAGREC, file_write_md)
 {
+    INIT_REC("st.cbor");
     std::thread th1([]()
                     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
