@@ -62,19 +62,19 @@ namespace
         const char *name = nullptr;
         if (verbosity <= -3)
         {
-            name = "FATL";
+            name = "-3";
         }
         else if (verbosity == -2)
         {
-            name = "ERR";
+            name = "-2";
         }
         else if (verbosity == -1)
         {
-            name = "WARN";
+            name = "-1";
         }
         else if (verbosity == 0)
         {
-            name = "INFO";
+            name = "0";
         }
 
         return name;

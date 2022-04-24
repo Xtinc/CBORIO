@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "reclog.h"
 #include "my_class.h"
-#include "utilities.h"
+#include "reclog_impl.h"
 #include "test_tools.h"
 #include <thread>
 
@@ -29,9 +29,9 @@ TEST(REFL_TEST, refk_struct)
         Rect rect{
             {1.2, 3.4},
             {5.6, 7.8},
-            12345678,
-        };
-        result << rect;
+            12348};
+        Point pp{3.4, 5.6};
+        result << pp;
     }
     std::cout << "serialize rect result:" << std::endl
               << result.str() << std::endl;
@@ -71,7 +71,7 @@ TEST(BAGREC, preamble)
 {
     print_header();
     char preamble_buffer[REC_PREAMBLE_WIDTH];
-    print_preamble(preamble_buffer, sizeof(preamble_buffer), RECLOG::Verbosity_INFO, __FILE__, __LINE__);
+    print_preamble(preamble_buffer, sizeof(preamble_buffer), RECLOG::Verbosity_1, __FILE__, __LINE__);
     printf("%s", preamble_buffer);
     fflush(stdout);
 }
@@ -84,19 +84,19 @@ TEST(BAGREC, console_format_print)
     float little2 = 1.5;
     float whole = 4.00000;
 
-    RECLOG(INFO) << "Some values with noshowpoint (the default)";
+    RECLOG(1) << "Some values with noshowpoint (the default)";
 
-    RECLOG(INFO) << "lots:    " << lots;
-    RECLOG(INFO) << "little1: " << little1;
-    RECLOG(INFO) << "little2: " << little2;
-    RECLOG(INFO) << "whole:   " << whole;
+    RECLOG(1) << "lots:    " << lots;
+    RECLOG(1) << "little1: " << little1;
+    RECLOG(1) << "little2: " << little2;
+    RECLOG(1) << "whole:   " << whole;
 
-    RECLOG(INFO) << "The same values with showpoint";
+    RECLOG(1) << "The same values with showpoint";
 
-    RECLOG(INFO) << "lots:    " << std::showpoint << lots;
-    RECLOG(INFO) << "little1: " << std::showpoint << little1;
-    RECLOG(INFO) << "little2: " << std::showpoint << little2;
-    RECLOG(INFO) << "whole:   " << std::showpoint << whole;
+    RECLOG(1) << "lots:    " << std::showpoint << lots;
+    RECLOG(1) << "little1: " << std::showpoint << little1;
+    RECLOG(1) << "little2: " << std::showpoint << little2;
+    RECLOG(1) << "whole:   " << std::showpoint << whole;
 }
 
 TEST(BAGREC, stream_io_speed)
@@ -107,7 +107,7 @@ TEST(BAGREC, stream_io_speed)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG(INFO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        RECLOG(1) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond\n", elapsed / 10.0);
@@ -139,7 +139,7 @@ void test_file_write_speed()
     for (int i = 0; i < 10000; ++i)
     {
         cnt = cnt + 56;
-        RECLOG(INFO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        RECLOG(1) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond\n", elapsed / 10.0);
@@ -195,7 +195,7 @@ void test_console_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECLOG(INFO) << stw;
+        RECLOG(1) << stw;
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
@@ -223,7 +223,7 @@ void test_file_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECLOG(INFO) << REFL(stw);
+        RECLOG(1) << REFL(stw);
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);

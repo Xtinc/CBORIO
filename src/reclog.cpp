@@ -1,5 +1,5 @@
 #include "reclog.h"
-#include "utilities.h"
+#include "reclog_impl.h"
 
 FILE *RECONFIG::fp = nullptr;
 long long RECONFIG::start_time = 0;
@@ -7,6 +7,11 @@ long long RECONFIG::start_time = 0;
 void RECLOG::INIT_REC(const char *filename)
 {
     std::call_once(rec_init_flag, init_impl, filename);
+}
+
+void RECLOG::EXIT_REC()
+{
+    fclose(RECONFIG::fp);
 }
 
 RECLOG::reclogger::~reclogger()

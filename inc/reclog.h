@@ -13,13 +13,15 @@ namespace RECLOG
 
     enum NamedVerbosity : int
     {
-        Verbosity_FATAL = -3,
-        Verbosity_ERROR = -2,
-        Verbosity_WARNING = -1,
-        Verbosity_INFO = 0,
+        Verbosity_1 = -3,
+        Verbosity_2 = -2,
+        Verbosity_3 = -1,
+        Verbosity_4 = 0,
     };
 
     void INIT_REC(const char *filename = "");
+
+    void EXIT_REC();
 
     constexpr int m_buffer_size = 4096;
 
@@ -72,11 +74,13 @@ namespace RECLOG
         const char *_file;
         unsigned int _line;
         int m_verbosity;
+        bool m_encode;
         std::ostringstream _ss;
 
     public:
         reclogger(FILE *fp, int verbosity, const char *file, unsigned line)
-            : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file), _line(line), m_verbosity(verbosity) {}
+            : m_buf(m_buffer_size), en(m_buf), mpFile(fp), _file(file),
+              _line(line), m_verbosity(verbosity), m_encode(true) {}
         ~reclogger();
 
         template <typename T,
@@ -169,6 +173,5 @@ namespace RECLOG
             out.serializeObj(value, fdname);
         }
     };
-
 }
 #endif

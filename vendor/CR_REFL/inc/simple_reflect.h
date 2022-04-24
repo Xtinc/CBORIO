@@ -215,10 +215,10 @@ namespace refl
 
     template <typename T>
     typename std::enable_if<!IsReflected<T>::value>::type
-    serializeObj(std::ostream &out, const T &,
+    serializeObj(std::ostream &out, const T &obj,
                  const char *fieldName = "", int depth = 0)
     {
-        out << fieldName << ":" << depth << std::endl;
+        out << fieldName << ':' << obj << std::endl;
     }
 
     template <typename T>
@@ -228,6 +228,7 @@ namespace refl
     {
         out << fieldName << (*fieldName ? ": {" : "{") << std::endl;
         forEach(obj, GFunc_out(out, depth));
+        out << "}" << std::endl;
     }
 
     struct GFunc_out
@@ -257,7 +258,7 @@ namespace refl
         in >> token; // eat '{'
         if (*fieldName)
         {
-            in >> token; // WARNING: needs check fieldName valid
+            in >> token;
         }
 
         forEach(obj, GFunc_in(in));
@@ -273,7 +274,7 @@ namespace refl
         if (*fieldName)
         {
             std::string token;
-            in >> token; // WARNING: needs check fieldName valid
+            in >> token;
         }
         in >> obj; // dump value
     }

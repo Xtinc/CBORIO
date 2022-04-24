@@ -250,7 +250,8 @@ TEST_F(CBOR_I_TestCase, byte_array)
 {
     RO_DECODER_CLS
     std::vector<unsigned char> tp{0xFF, 0XFE, 0XFD, 0XFC, 0XFB, 0XEA};
-    en.write_data(tp);
+    en << tp;
+    en.write_data(tp.data(), tp.size());
     RO_DECODER_RUN
 }
 
