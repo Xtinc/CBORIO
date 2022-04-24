@@ -30,16 +30,15 @@ TEST(REFL_TEST, refk_struct)
             {1.2, 3.4},
             {5.6, 7.8},
             12348};
-        Point pp{3.4, 5.6};
-        result << pp;
+        result << rect;
     }
     std::cout << "serialize rect result:" << std::endl
               << result.str() << std::endl;
 
     Rect rect2;
-    refl::deserializeObj(result, rect2);
+    result >> rect2;
     std::cout << "deserialize rect result:" << std::endl;
-    refl::serializeObj(std::cout, rect2);
+    std::cout << rect2;
 }
 
 DEFINE_STRUCT(TEST_CBOR,

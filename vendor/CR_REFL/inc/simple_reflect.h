@@ -142,6 +142,11 @@ using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
             refl::serializeObj(os, ss);                                     \
             return os;                                                      \
         };                                                                  \
+        friend std::istream &operator>>(std::istream &is, st &ss)           \
+        {                                                                   \
+            refl::deserializeObj(is, ss);                                   \
+            return is;                                                      \
+        };                                                                  \
         template <typename, size_t>                                         \
         struct FIELD;                                                       \
         static constexpr const char *_field_name_ = _REFL_STRING(st);       \
@@ -215,15 +220,16 @@ namespace refl
 
     template <typename T>
     typename std::enable_if<!IsReflected<T>::value>::type
-    serializeObj(std::ostream &out, const T &obj,
+    serializeObj(std::ostream &out, T obj,
                  const char *fieldName = "", int depth = 0)
     {
+        (void)depth;
         out << fieldName << ':' << obj << std::endl;
     }
 
     template <typename T>
     typename std::enable_if<IsReflected<T>::value>::type
-    serializeObj(std::ostream &out, const T &obj,
+    serializeObj(std::ostream &out, T obj,
                  const char *fieldName = "", int depth = 0)
     {
         out << fieldName << (*fieldName ? ": {" : "{") << std::endl;
