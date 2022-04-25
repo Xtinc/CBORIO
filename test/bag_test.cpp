@@ -147,6 +147,13 @@ void test_file_write_speed()
     fflush(stdout);
 }
 
+TEST(BAGREC, test_CRTP_raw)
+{
+    RECLOG::INIT_REC("st.cbor");
+    std::string stss = "adadasdada";
+    RECLOG::reclogger_raw(RECONFIG::fp) << get_date_time() << (int)1 << stss;
+}
+
 TEST(BAGREC, std_file_speed)
 {
     test_stdfile_speed();

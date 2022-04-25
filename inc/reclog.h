@@ -26,6 +26,76 @@ namespace RECLOG
     constexpr int m_buffer_size = 4096;
 
     struct GFunc_out;
+    struct sFunc_lambda;
+
+    template <class Derived>
+    class reclogger_base
+    {
+        template <typename T>
+        reclogger_base &operator<<(T &&t)
+        {
+            static_cast<Derived *>(this)->operator<<(t);
+        }
+    };
+
+    class reclogger_raw : public reclogger_base<reclogger_raw>
+    {
+    private:
+        std::ostringstream m_ss;
+        FILE *m_pFile;
+
+    public:
+        reclogger_raw(FILE *fp) : m_pFile(fp) {}
+        ~reclogger_raw();
+
+        template <typename T,
+                  typename std::enable_if<refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
+        reclogger_raw &operator<<(T &&t)
+        {
+            serializeObj(t.st_t, t.st_name);
+            return *this;
+        }
+
+        template <typename T,
+                  typename std::enable_if<!refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
+        reclogger_raw &operator<<(T &&t)
+        {
+            serializeObj(t);
+            return *this;
+        }
+
+        // std::endl and other iomanip:s.
+        reclogger_raw &operator<<(std::ios_base &(*f)(std::ios_base &))
+        {
+            f(m_ss);
+            return *this;
+        }
+
+    private:
+        friend struct sFunc_lambda;
+        template <typename T,
+                  typename std::enable_if<!refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
+        void serializeObj(const T &obj, const char *fieldName = "")
+        {
+            if (*fieldName)
+            {
+                m_ss << fieldName << obj;
+            }
+            else
+            {
+                m_ss << obj;
+            }
+        }
+
+        template <typename T,
+                  typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
+        void serializeObj(const T &obj, const char *fieldName = "")
+        {
+            m_ss << fieldName << '{';
+            refl::forEach(obj, sFunc_lambda(*this));
+            m_ss << '}';
+        }
+    };
 
     class reclogger
     {
@@ -75,7 +145,7 @@ namespace RECLOG
         unsigned int _line;
         int m_verbosity;
         bool m_encode;
-        std::ostringstream _ss;
+        std::ostringstream m_ss;
 
     public:
         reclogger(FILE *fp, int verbosity, const char *file, unsigned line)
@@ -104,7 +174,7 @@ namespace RECLOG
         {
             if (mpFile == nullptr)
             {
-                f(_ss);
+                f(m_ss);
             }
             return *this;
         }
@@ -119,11 +189,11 @@ namespace RECLOG
             {
                 if (*fieldName)
                 {
-                    _ss << fieldName << obj;
+                    m_ss << fieldName << obj;
                 }
                 else
                 {
-                    _ss << obj;
+                    m_ss << obj;
                 }
             }
             else
@@ -145,9 +215,9 @@ namespace RECLOG
         {
             if (mpFile == nullptr)
             {
-                _ss << fieldName << '{';
+                m_ss << fieldName << '{';
                 refl::forEach(obj, GFunc_out(*this));
-                _ss << '}';
+                m_ss << '}';
             }
             else
             {
@@ -165,6 +235,22 @@ namespace RECLOG
 
     public:
         GFunc_out(reclogger &_os) : out(_os)
+        {
+        }
+        template <typename Name, typename Valu>
+        void operator()(Name &&fdname, Valu &&value)
+        {
+            out.serializeObj(value, fdname);
+        }
+    };
+
+    struct sFunc_lambda
+    {
+    private:
+        reclogger_raw &out;
+
+    public:
+        sFunc_lambda(reclogger_raw &_os) : out(_os)
         {
         }
         template <typename Name, typename Valu>

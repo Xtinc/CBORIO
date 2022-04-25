@@ -14,6 +14,14 @@ void RECLOG::EXIT_REC()
     fclose(RECONFIG::fp);
 }
 
+RECLOG::reclogger_raw::~reclogger_raw()
+{
+    if (m_pFile != nullptr)
+    {
+        fwrite(m_ss.str().c_str(), sizeof(char), m_ss.str().length(), m_pFile);
+    }
+}
+
 RECLOG::reclogger::~reclogger()
 {
     if (mpFile != nullptr)
@@ -25,6 +33,6 @@ RECLOG::reclogger::~reclogger()
     {
         char preamble_buffer[REC_PREAMBLE_WIDTH];
         print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
-        printf("%s%s\n", preamble_buffer, _ss.str().c_str());
+        printf("%s%s\n", preamble_buffer, m_ss.str().c_str());
     }
 }
