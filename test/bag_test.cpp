@@ -289,10 +289,72 @@ TEST(BAGREC, file_read)
     }
 }
 
+void test_raw_write()
+{
+    std::mt19937 gen{std::random_device{}()};
+    std::uniform_int_distribution<int> dis_len(0, 1000);
+    std::uniform_int_distribution<int> dis_char{'a', 'z'};
+    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
+
+    STRWNUM stw;
+
+    Timer timer;
+    size_t cnt = 0;
+    for (int i = 0; i < 10000; ++i)
+    {
+        std::string str(dis_len(gen), '\0');
+        for (auto &j : str)
+        {
+            j = static_cast<char>(dis_char(gen));
+        }
+        double d = dis_flt(gen);
+        stw = {str, d};
+        cnt = cnt + 8 + str.size();
+        RECLOG(raw) << stw.num_b << stw.str_a;
+    }
+    double elapsed = timer.elapsed() / 1000;
+    printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
+    printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (cnt / (1024. * 1024.)) / elapsed);
+}
+
+void test_raw_write_speed()
+{
+    TEST_CBOR tcb = {1, 8.9};
+    uint64_t ces = 887;
+    Timer timer;
+    unsigned int cnt = 0;
+    std::string sst("cessjo");
+    for (int i = 0; i < 10000; ++i)
+    {
+        cnt = cnt + 56;
+        RECLOG(raw) << tcb.a << tcb.b << sst << 1 << 5.599 << -1 << ces << tcb.a << tcb.b;
+    }
+    double elapsed = timer.elapsed();
+    printf("%.2lf usecond\n", elapsed / 10.0);
+    elapsed = elapsed / 1000.0;
+    printf("%.2lf MB/s\n", (cnt / (1024. * 1024.)) / elapsed);
+    fflush(stdout);
+}
+
 TEST(BAGREC, write_raw_file)
 {
     RECLOG::INIT_REC("st.cbor");
     std::string tp("ceshi1");
     RECLOG(raw) << get_date_time() << 1 << tp.size() << tp;
     RECLOG(raw) << get_date_time() << 1 << tp.size() << tp;
+    RECLOG::EXIT_REC();
+}
+
+TEST(BAGREC, test_raw_file_write)
+{
+    RECLOG::INIT_REC("st.cbor");
+    test_raw_write();
+    RECLOG::EXIT_REC();
+}
+
+TEST(BAGREC, test_raw_file_speed)
+{
+    RECLOG::INIT_REC("st.cbor");
+    test_raw_write_speed();
+    RECLOG::EXIT_REC();
 }
