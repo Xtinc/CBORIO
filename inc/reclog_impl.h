@@ -10,12 +10,15 @@
 #include <thread>
 #include <mutex>
 
-class RECONFIG
+namespace RECLOG
 {
-public:
-    static FILE *fp;
-    static long long start_time;
-};
+    class RECONFIG
+    {
+    public:
+        static FILE *fp;
+        static long long start_time;
+    };
+}
 
 namespace
 {
@@ -127,7 +130,7 @@ namespace
         tm time_info;
         localtime_r(&sec_since_epoch, &time_info);
 
-        auto uptime_ms = ms_since_epoch - RECONFIG::start_time;
+        auto uptime_ms = ms_since_epoch - RECLOG::RECONFIG::start_time;
         auto uptime_sec = static_cast<double>(uptime_ms) / 1000.0;
 
         char thread_name[REC_THREADNAME_WIDTH + 1] = {0};
@@ -177,10 +180,13 @@ namespace
     {
         if (strlen(filename) != 0)
         {
-            RECONFIG::fp = fopen(filename, "wb");
+            RECLOG::RECONFIG::fp = fopen(filename, "wb");
         }
-        RECONFIG::start_time = get_date_time();
-        print_header();
+        else
+        {
+            RECLOG::RECONFIG::start_time = get_date_time();
+            print_header();
+        }
     }
 }
 

@@ -70,7 +70,7 @@ TEST(BAGREC, preamble)
 {
     print_header();
     char preamble_buffer[REC_PREAMBLE_WIDTH];
-    print_preamble(preamble_buffer, sizeof(preamble_buffer), RECLOG::Verbosity_1, __FILE__, __LINE__);
+    print_preamble(preamble_buffer, sizeof(preamble_buffer), 0, __FILE__, __LINE__);
     printf("%s", preamble_buffer);
     fflush(stdout);
 }
@@ -83,19 +83,19 @@ TEST(BAGREC, console_format_print)
     float little2 = 1.5;
     float whole = 4.00000;
 
-    RECLOG(1) << "Some values with noshowpoint (the default)";
+    RECLOG(log) << "Some values with noshowpoint (the default)";
 
-    RECLOG(1) << "lots:    " << lots;
-    RECLOG(1) << "little1: " << little1;
-    RECLOG(1) << "little2: " << little2;
-    RECLOG(1) << "whole:   " << whole;
+    RECLOG(log) << "lots:    " << lots;
+    RECLOG(log) << "little1: " << little1;
+    RECLOG(log) << "little2: " << little2;
+    RECLOG(log) << "whole:   " << whole;
 
-    RECLOG(1) << "The same values with showpoint";
+    RECLOG(log) << "The same values with showpoint";
 
-    RECLOG(1) << "lots:    " << std::showpoint << lots;
-    RECLOG(1) << "little1: " << std::showpoint << little1;
-    RECLOG(1) << "little2: " << std::showpoint << little2;
-    RECLOG(1) << "whole:   " << std::showpoint << whole;
+    RECLOG(log) << "lots:    " << std::showpoint << lots;
+    RECLOG(log) << "little1: " << std::showpoint << little1;
+    RECLOG(log) << "little2: " << std::showpoint << little2;
+    RECLOG(log) << "whole:   " << std::showpoint << whole;
 }
 
 TEST(BAGREC, stream_io_speed)
@@ -106,7 +106,7 @@ TEST(BAGREC, stream_io_speed)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG(1) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        RECLOG(log) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond\n", elapsed / 10.0);
@@ -138,20 +138,13 @@ void test_file_write_speed()
     for (int i = 0; i < 10000; ++i)
     {
         cnt = cnt + 56;
-        RECLOG(1) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
+        RECLOG(file) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond\n", elapsed / 10.0);
     elapsed = elapsed / 1000.0;
     printf("%.2lf MB/s\n", (cnt / (1024. * 1024.)) / elapsed);
     fflush(stdout);
-}
-
-TEST(BAGREC, test_CRTP_raw)
-{
-    RECLOG::INIT_REC("st.cbor");
-    std::string stss = "adadasdada";
-    RECLOG::reclogger_raw(RECONFIG::fp) << get_date_time() << (int)1 << stss;
 }
 
 TEST(BAGREC, std_file_speed)
@@ -201,7 +194,7 @@ void test_console_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECLOG(1) << stw;
+        RECLOG(log) << stw;
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
@@ -229,7 +222,7 @@ void test_file_write()
         double d = dis_flt(gen);
         stw = {str, d};
         cnt = cnt + 8 + str.size();
-        RECLOG(1) << REFL(stw);
+        RECLOG(file) << REFL(stw);
     }
     double elapsed = timer.elapsed() / 1000;
     printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
@@ -294,4 +287,12 @@ TEST(BAGREC, file_read)
         de.run();
         roo.close();
     }
+}
+
+TEST(BAGREC, write_raw_file)
+{
+    RECLOG::INIT_REC("st.cbor");
+    std::string tp("ceshi1");
+    RECLOG(raw) << get_date_time() << 1 << tp.size() << tp;
+    RECLOG(raw) << get_date_time() << 1 << tp.size() << tp;
 }
