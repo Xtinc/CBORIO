@@ -39,16 +39,20 @@ unsigned long long decoder::get_data()
 template <>
 float decoder::get_data()
 {
+    // todo: related to byte_order
+    float tmp = 0.0f;
     uint8_t value[4] = {0};
     value[3] = m_input.get_byte();
     value[2] = m_input.get_byte();
     value[1] = m_input.get_byte();
     value[0] = m_input.get_byte();
-    return *(reinterpret_cast<float *>(&value[0]));
+    memcpy(&tmp, &value[0], sizeof(float));
+    return tmp;
 }
 template <>
 double decoder::get_data()
 {
+    double tmp = 0.0;
     uint8_t value[8] = {0};
     value[7] = m_input.get_byte();
     value[6] = m_input.get_byte();
@@ -58,7 +62,8 @@ double decoder::get_data()
     value[2] = m_input.get_byte();
     value[1] = m_input.get_byte();
     value[0] = m_input.get_byte();
-    return *(reinterpret_cast<double *>(&value[0]));
+    memcpy(&tmp, &value[0], sizeof(double));
+    return tmp;
 }
 
 void decoder::run()
