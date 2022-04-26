@@ -198,7 +198,7 @@ void HuffmanEncoder::buildCodes(int num_symbols)
 {
     int code = 0;
     int last_level = -1;
-    LOGV(2, "Write num_symbols %d\n", num_symbols);
+    //LOGV(2, "Write num_symbols %d\n", num_symbols);
     for (int i = 0; i < num_symbols; ++i)
     {
         // Build the binary representation.
@@ -221,7 +221,7 @@ void HuffmanEncoder::buildCodes(int num_symbols)
         m_len[symbol] = level;
         m_code[symbol] = code;
 
-        LOGV(2, "code:%s hex:%x level:%d symbol:%d\n", toBinary(code, level).c_str(), code, level, symbol);
+        //LOGV(2, "code:%s hex:%x level:%d symbol:%d\n", toBinary(code, level).c_str(), code, level, symbol);
     }
 }
 
@@ -238,7 +238,7 @@ void HuffmanEncoder::limitLength(int num_symbols)
         m_nodes[i].freq = std::min(m_nodes[i].freq, kMaxHuffCodeLength);
         k += 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
     }
-    LOGV(3, "k before: %.6lf\n", k / double(maxk));
+    //LOGV(3, "k before: %.6lf\n", k / double(maxk));
     for (int i = num_symbols - 1; i >= 0 && k > maxk; --i)
     {
         while (m_nodes[i].freq < kMaxHuffCodeLength)
@@ -247,7 +247,7 @@ void HuffmanEncoder::limitLength(int num_symbols)
             k -= 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
         }
     }
-    LOGV(3, "k pass1: %.6lf\n", k / double(maxk));
+    //LOGV(3, "k pass1: %.6lf\n", k / double(maxk));
     for (int i = 0; i < num_symbols; ++i)
     {
         while (k + (1 << (kMaxHuffCodeLength - m_nodes[i].freq)) <= maxk)
@@ -256,7 +256,7 @@ void HuffmanEncoder::limitLength(int num_symbols)
             --m_nodes[i].freq;
         }
     }
-    LOGV(3, "k pass2: %x, %x\n", k, maxk);
+    //LOGV(3, "k pass2: %x, %x\n", k, maxk);
 }
 
 void HuffmanEncoder::walk(Node *n, int level)
@@ -282,14 +282,14 @@ void HuffmanDecoder::readTable()
         m_br.refill();
         int symbol = m_br.readBits(m_symbits);
         int codelen = m_br.readBits(4) + 1;
-        LOGV(2, "sym:%d len:%d\n", symbol, codelen);
+        //LOGV(2, "sym:%d len:%d\n", symbol, codelen);
 
         ++codelen_cnt[codelen];
         symbol_t[i] = symbol;
         min_codelen = std::min(min_codelen, codelen);
         max_codelen = std::max(max_codelen, codelen);
     }
-    LOGV(1, "num_sym %d codelen(min:%d, max:%d)\n", num_symbols, min_codelen, max_codelen);
+    //LOGV(1, "num_sym %d codelen(min:%d, max:%d)\n", num_symbols, min_codelen, max_codelen);
     // https://www.jianshu.com/p/4cbbfed4160b
     // Ensure we catch up to be byte aligned.
     m_br.byteAlign();

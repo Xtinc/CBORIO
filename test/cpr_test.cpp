@@ -109,7 +109,7 @@ TEST(HUFFMAN_TEST, huffman_example)
     auto p_iter = con.data();
     unsigned char *outfile = new unsigned char[con.size()];
     cborio::HuffmanEncoder encoder(outfile);
-    for (int64_t i = 0; i < con.size(); ++i)
+    for (size_t i = 0; i < con.size(); ++i)
     {
         encoder.scan(*(p_iter + i));
     }
