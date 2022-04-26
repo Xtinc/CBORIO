@@ -1,6 +1,7 @@
 #include "decoder.h"
 #include <limits.h>
 #include <vector>
+#include <cstring>
 
 using namespace cborio;
 
