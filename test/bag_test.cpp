@@ -20,13 +20,39 @@ DEFINE_STRUCT(TEST_CBOR,
               (int)a,
               (double)b);
 
+void generate_rnd_str(std::vector<STRWNUM> &strlist, size_t &cnt)
+{
+    std::mt19937 gen{std::random_device{}()};
+    std::uniform_int_distribution<int> dis_len(0, 1000);
+    std::uniform_int_distribution<int> dis_char{'a', 'z'};
+    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
+
+    STRWNUM stw;
+    cnt = 0;
+    for (int i = 0; i < 10000; ++i)
+    {
+        std::string str(dis_len(gen), '\0');
+        for (auto &j : str)
+        {
+            j = static_cast<char>(dis_char(gen));
+        }
+        double d = dis_flt(gen);
+        stw = {str, d};
+        strlist.push_back(stw);
+        cnt = cnt + 8 + str.size();
+    }
+}
+
 class RECLOG_TestCase : public ::testing::Test
 {
 public:
     RECLOG_TestCase()
     {
         RECLOG::INIT_REC();
+        generate_rnd_str(strlist, cnt);
     }
+    std::vector<STRWNUM> strlist;
+    size_t cnt;
 };
 
 class RECFILE_TestCase : public ::testing::Test
@@ -35,7 +61,10 @@ public:
     RECFILE_TestCase()
     {
         RECLOG::INIT_REC("st.cbor");
+        generate_rnd_str(strlist, cnt);
     }
+    std::vector<STRWNUM> strlist;
+    size_t cnt;
     ~RECFILE_TestCase()
     {
     }
@@ -47,7 +76,10 @@ public:
     RECRAW_TestCase()
     {
         RECLOG::INIT_REC("st.cbor");
+        generate_rnd_str(strlist, cnt);
     }
+    std::vector<STRWNUM> strlist;
+    size_t cnt;
     ~RECRAW_TestCase()
     {
     }
@@ -69,28 +101,8 @@ struct test_encoder_stream_io
     };
 };
 
-void test_print_speed(std::function<void(const STRWNUM &)> &&f)
+void test_print_speed(const std::vector<STRWNUM> &strlist, const size_t &cnt, std::function<void(const STRWNUM &)> &&f)
 {
-    std::mt19937 gen{std::random_device{}()};
-    std::uniform_int_distribution<int> dis_len(0, 1000);
-    std::uniform_int_distribution<int> dis_char{'a', 'z'};
-    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
-
-    STRWNUM stw;
-    size_t cnt = 0;
-    std::vector<STRWNUM> strlist;
-    for (int i = 0; i < 10000; ++i)
-    {
-        std::string str(dis_len(gen), '\0');
-        for (auto &j : str)
-        {
-            j = static_cast<char>(dis_char(gen));
-        }
-        double d = dis_flt(gen);
-        stw = {str, d};
-        strlist.push_back(stw);
-        cnt = cnt + 8 + str.size();
-    }
     Timer timer;
     for (auto &i : strlist)
     {
@@ -168,7 +180,7 @@ TEST_F(RECLOG_TestCase, sio_func)
 
 TEST_F(RECLOG_TestCase, sio_speed)
 {
-    test_print_speed([](const STRWNUM &stw)
+    test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                      { RECLOG(log) << stw; });
 }
 
@@ -177,8 +189,8 @@ TEST_F(RECLOG_TestCase, sio_speed_md)
     std::vector<std::thread> thdvec;
     for (size_t i = 0; i < 5; ++i)
     {
-        thdvec.emplace_back([]()
-                            { test_print_speed([](const STRWNUM &stw)
+        thdvec.emplace_back([this]()
+                            { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                                                { RECLOG(log) << stw; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
@@ -203,7 +215,7 @@ TEST_F(RECFILE_TestCase, fio_func)
 
 TEST_F(RECFILE_TestCase, fio_speed)
 {
-    test_print_speed([](const STRWNUM &stw)
+    test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                      { RECLOG(file) << stw; });
 }
 
@@ -212,8 +224,8 @@ TEST_F(RECFILE_TestCase, fio_speed_md)
     std::vector<std::thread> thdvec;
     for (size_t i = 0; i < 5; ++i)
     {
-        thdvec.emplace_back([]()
-                            { test_print_speed([](const STRWNUM &stw)
+        thdvec.emplace_back([this]()
+                            { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                                                { RECLOG(file) << stw; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
@@ -241,7 +253,7 @@ TEST_F(RECRAW_TestCase, raw_func)
 
 TEST_F(RECRAW_TestCase, raw_speed)
 {
-    test_print_speed([](const STRWNUM &stw)
+    test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                      { RECLOG(raw) << stw.num_b << stw.str_a; });
 }
 
@@ -250,8 +262,8 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     std::vector<std::thread> thdvec;
     for (size_t i = 0; i < 5; ++i)
     {
-        thdvec.emplace_back([]()
-                            { test_print_speed([](const STRWNUM &stw)
+        thdvec.emplace_back([this]()
+                            { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                                                { RECLOG(raw) << stw.num_b << stw.str_a; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
