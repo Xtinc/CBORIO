@@ -3,6 +3,7 @@
 
 #include "templates.h"
 #include <cstdint>
+#include <sstream>
 
 namespace cborio
 {

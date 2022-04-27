@@ -38,7 +38,6 @@ public:
     }
     ~RECFILE_TestCase()
     {
-        RECLOG::EXIT_REC();
     }
 };
 
@@ -51,7 +50,6 @@ public:
     }
     ~RECRAW_TestCase()
     {
-        RECLOG::EXIT_REC();
     }
 };
 
@@ -177,13 +175,13 @@ TEST_F(RECLOG_TestCase, sio_speed)
 TEST_F(RECLOG_TestCase, sio_speed_md)
 {
     std::vector<std::thread> thdvec;
-    for (auto i = 0; i < 5; ++i)
+    for (size_t i = 0; i < 5; ++i)
     {
         thdvec.emplace_back([]()
                             { test_print_speed([](const STRWNUM &stw)
                                                { RECLOG(log) << stw; }); });
     }
-    for (auto i = 0; i < thdvec.size(); ++i)
+    for (size_t i = 0; i < thdvec.size(); ++i)
     {
         thdvec[i].join();
     }
@@ -212,13 +210,13 @@ TEST_F(RECFILE_TestCase, fio_speed)
 TEST_F(RECFILE_TestCase, fio_speed_md)
 {
     std::vector<std::thread> thdvec;
-    for (auto i = 0; i < 5; ++i)
+    for (size_t i = 0; i < 5; ++i)
     {
         thdvec.emplace_back([]()
                             { test_print_speed([](const STRWNUM &stw)
                                                { RECLOG(file) << stw; }); });
     }
-    for (auto i = 0; i < thdvec.size(); ++i)
+    for (size_t i = 0; i < thdvec.size(); ++i)
     {
         thdvec[i].join();
     }
@@ -250,13 +248,13 @@ TEST_F(RECRAW_TestCase, raw_speed)
 TEST_F(RECRAW_TestCase, raw_speed_md)
 {
     std::vector<std::thread> thdvec;
-    for (auto i = 0; i < 5; ++i)
+    for (size_t i = 0; i < 5; ++i)
     {
         thdvec.emplace_back([]()
                             { test_print_speed([](const STRWNUM &stw)
                                                { RECLOG(raw) << stw.num_b << stw.str_a; }); });
     }
-    for (auto i = 0; i < thdvec.size(); ++i)
+    for (size_t i = 0; i < thdvec.size(); ++i)
     {
         thdvec[i].join();
     }
