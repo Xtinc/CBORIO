@@ -11,7 +11,7 @@ void RECLOG::INIT_REC(const char *filename)
 
 void RECLOG::EXIT_REC()
 {
-    fclose(RECONFIG::fp);
+    std::call_once(rec_exit_flag, exit_impl);
 }
 
 RECLOG::reclogger_raw::~reclogger_raw()

@@ -10,22 +10,13 @@
 #include <thread>
 #include <mutex>
 
-namespace RECLOG
-{
-    class RECONFIG
-    {
-    public:
-        static FILE *fp;
-        static long long start_time;
-    };
-}
-
 namespace
 {
     constexpr int REC_THREADNAME_WIDTH = 8;
     constexpr int REC_FILENAME_WIDTH = 23;
     constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
     std::once_flag rec_init_flag;
+    std::once_flag rec_exit_flag;
 
     inline const char *filename(const char *path)
     {
@@ -186,6 +177,14 @@ namespace
         {
             RECLOG::RECONFIG::start_time = get_date_time();
             print_header();
+        }
+    }
+
+    inline void exit_impl()
+    {
+        if (RECLOG::RECONFIG::fp != nullptr)
+        {
+            fclose(RECLOG::RECONFIG::fp);
         }
     }
 }

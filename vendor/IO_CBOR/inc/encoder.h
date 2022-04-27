@@ -24,7 +24,15 @@ namespace cborio
     public:
         encoder(output &out) : m_out(out){};
         ~encoder(){};
-        template <typename T>
+        template <typename T, typename std::enable_if<IsOverloadedOperator<T>::value>::type * = nullptr>
+        encoder &operator<<(T t)
+        {
+            std::stringstream ss;
+            ss << t;
+            write_data(ss.str());
+            return *this;
+        }
+        template <typename T, typename std::enable_if<!IsOverloadedOperator<T>::value>::type * = nullptr>
         encoder &operator<<(T t)
         {
             write_data(t);

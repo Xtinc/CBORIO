@@ -5,12 +5,6 @@
 #include "test_tools.h"
 #include <thread>
 
-int main(int argc, char **argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
-
 DEFINE_STRUCT(Point,
               (double)x,
               (double)y);
@@ -22,62 +16,124 @@ DEFINE_STRUCT(STRWNUM,
               (std::string)str_a,
               (double)num_b);
 
-TEST(REFL_TEST, refk_struct)
-{
-    std::stringstream result;
-    {
-        Rect rect{
-            {1.2, 3.4},
-            {5.6, 7.8},
-            12348};
-        result << rect;
-    }
-    std::cout << "serialize rect result:" << std::endl
-              << result.str() << std::endl;
-
-    Rect rect2;
-    result >> rect2;
-    std::cout << "deserialize rect result:" << std::endl;
-    std::cout << rect2;
-}
-
 DEFINE_STRUCT(TEST_CBOR,
               (int)a,
               (double)b);
 
-TEST(BAGREC, sio_time)
+class RECLOG_TestCase : public ::testing::Test
+{
+public:
+    RECLOG_TestCase()
+    {
+        RECLOG::INIT_REC();
+    }
+};
+
+class RECFILE_TestCase : public ::testing::Test
+{
+public:
+    RECFILE_TestCase()
+    {
+        RECLOG::INIT_REC("st.cbor");
+    }
+    ~RECFILE_TestCase()
+    {
+        RECLOG::EXIT_REC();
+    }
+};
+
+class RECRAW_TestCase : public ::testing::Test
+{
+public:
+    RECRAW_TestCase()
+    {
+        RECLOG::INIT_REC("st.cbor");
+    }
+    ~RECRAW_TestCase()
+    {
+        RECLOG::EXIT_REC();
+    }
+};
+
+struct test_encoder_stream_io
+{
+    int a;
+    int b;
+    double c;
+    std::string d;
+
+    test_encoder_stream_io(int _a, int _b, double _c, std::string _d) : a(_a), b(_b), c(_c), d(_d) {}
+
+    friend std::ostream &operator<<(std::ostream &os, const test_encoder_stream_io &ss)
+    {
+        os << ss.a << ss.b << ss.c << ss.d;
+        return os;
+    };
+};
+
+void test_print_speed(std::function<void(const STRWNUM &)> &&f)
+{
+    std::mt19937 gen{std::random_device{}()};
+    std::uniform_int_distribution<int> dis_len(0, 1000);
+    std::uniform_int_distribution<int> dis_char{'a', 'z'};
+    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
+
+    STRWNUM stw;
+    size_t cnt = 0;
+    std::vector<STRWNUM> strlist;
+    for (int i = 0; i < 10000; ++i)
+    {
+        std::string str(dis_len(gen), '\0');
+        for (auto &j : str)
+        {
+            j = static_cast<char>(dis_char(gen));
+        }
+        double d = dis_flt(gen);
+        stw = {str, d};
+        strlist.push_back(stw);
+        cnt = cnt + 8 + str.size();
+    }
+    Timer timer;
+    for (auto &i : strlist)
+    {
+        f(i);
+    }
+    double elapsed = timer.elapsed() / 10.0;
+    printf("%.2lf usecond per log.\n", elapsed);
+    elapsed = elapsed / 100.0;
+    printf("Print %7.4f kbytes,in %.2lf seconds, %.2lf MB/s\n",
+           cnt / 1000.0, elapsed, (cnt / (1024. * 1024.)) / elapsed);
+}
+
+int main(int argc, char **argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
+TEST_F(RECLOG_TestCase, sio_time)
 {
     char *td = new char[50];
     for (int i = 0; i < 100; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         print_date_time(get_date_time(), td, 50);
-        std::cout << td << std::endl;
+        RECLOG(log) << td[i];
     }
 
     delete[] td;
 }
 
-TEST(BAGREC, sio_thread)
+TEST_F(RECLOG_TestCase, sio_thread)
 {
     char *td = new char[50];
     print_thread_name(get_thread_name(), td, 50);
-    std::cout << td << std::endl;
+    RECLOG(log) << td;
     delete[] td;
 }
 
-TEST(BAGREC, preamble)
+TEST_F(RECLOG_TestCase, log_format)
 {
-    print_header();
-    char preamble_buffer[REC_PREAMBLE_WIDTH];
-    print_preamble(preamble_buffer, sizeof(preamble_buffer), 0, __FILE__, __LINE__);
-    printf("%s", preamble_buffer);
-    fflush(stdout);
-}
-
-TEST(BAGREC, console_format_print)
-{
-    RECLOG::INIT_REC();
     float lots = 3.141592f;
     float little1 = 2.25;
     float little2 = 1.5;
@@ -98,263 +154,110 @@ TEST(BAGREC, console_format_print)
     RECLOG(log) << "whole:   " << std::showpoint << whole;
 }
 
-TEST(BAGREC, stream_io_speed)
-{
-    RECLOG::INIT_REC();
-    TEST_CBOR tcb = {1, 8.9};
-    uint64_t ces = 887;
-    Timer timer;
-    for (int i = 0; i < 10000; ++i)
-    {
-        RECLOG(log) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
-    }
-    double elapsed = timer.elapsed();
-    printf("%.2lf usecond\n", elapsed / 10.0);
-    fflush(stdout);
-}
-
-void test_stdfile_speed()
-{
-    std::ofstream out("stdout");
-    TEST_CBOR tcb = {1, 8.9};
-    uint64_t ces = 887;
-    Timer timer;
-    for (int i = 0; i < 10000; ++i)
-    {
-        out << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
-    }
-    double elapsed = timer.elapsed();
-    printf("%.2lf usecond\n", elapsed / 10.0);
-    fflush(stdout);
-}
-
-void test_file_write_speed()
-{
-    RECLOG::INIT_REC("st.cbor");
-    TEST_CBOR tcb = {1, 8.9};
-    uint64_t ces = 887;
-    Timer timer;
-    unsigned int cnt = 0;
-    for (int i = 0; i < 10000; ++i)
-    {
-        cnt = cnt + 56;
-        RECLOG(file) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb;
-    }
-    double elapsed = timer.elapsed();
-    printf("%.2lf usecond\n", elapsed / 10.0);
-    elapsed = elapsed / 1000.0;
-    printf("%.2lf MB/s\n", (cnt / (1024. * 1024.)) / elapsed);
-    fflush(stdout);
-}
-
-TEST(BAGREC, std_file_speed)
-{
-    test_stdfile_speed();
-}
-
-TEST(BAGREC, file_io_speed)
-{
-    test_file_write_speed();
-}
-
-TEST(BAGREC, file_io_speed_md)
-{
-    std::thread th1([]()
-                    { test_file_write_speed(); });
-    std::thread th2([]()
-                    { test_file_write_speed(); });
-    std::thread th3([]()
-                    { test_file_write_speed(); });
-    std::thread th4([]()
-                    { test_file_write_speed(); });
-    th1.join();
-    th2.join();
-    th3.join();
-    th4.join();
-}
-
-void test_console_write()
-{
-    std::mt19937 gen{std::random_device{}()};
-    std::uniform_int_distribution<int> dis_len(0, 1000);
-    std::uniform_int_distribution<int> dis_char{'a', 'z'};
-    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
-
-    STRWNUM stw;
-
-    Timer timer;
-    size_t cnt = 0;
-    for (int i = 0; i < 10000; ++i)
-    {
-        std::string str(dis_len(gen), '\0');
-        for (auto &j : str)
-        {
-            j = static_cast<char>(dis_char(gen));
-        }
-        double d = dis_flt(gen);
-        stw = {str, d};
-        cnt = cnt + 8 + str.size();
-        RECLOG(log) << stw;
-    }
-    double elapsed = timer.elapsed() / 1000;
-    printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
-    printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (cnt / (1024. * 1024.)) / elapsed);
-}
-
-void test_file_write()
-{
-    std::mt19937 gen{std::random_device{}()};
-    std::uniform_int_distribution<int> dis_len(0, 1000);
-    std::uniform_int_distribution<int> dis_char{'a', 'z'};
-    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
-
-    STRWNUM stw;
-
-    Timer timer;
-    size_t cnt = 0;
-    for (int i = 0; i < 10000; ++i)
-    {
-        std::string str(dis_len(gen), '\0');
-        for (auto &j : str)
-        {
-            j = static_cast<char>(dis_char(gen));
-        }
-        double d = dis_flt(gen);
-        stw = {str, d};
-        cnt = cnt + 8 + str.size();
-        RECLOG(file) << REFL(stw);
-    }
-    double elapsed = timer.elapsed() / 1000;
-    printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
-    printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (cnt / (1024. * 1024.)) / elapsed);
-}
-
-TEST(BAGREC, console_write)
-{
-    RECLOG::INIT_REC();
-    test_console_write();
-}
-
-TEST(BAGREC, file_write)
-{
-    RECLOG::INIT_REC("st.cbor");
-    test_file_write();
-}
-
-TEST(BAGREC, console_write_md)
-{
-    RECLOG::INIT_REC();
-    std::thread th1([]()
-                    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        test_console_write(); });
-    std::thread th2([]()
-                    { test_console_write(); });
-    std::thread th3([]()
-                    {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        test_console_write(); });
-    th1.join();
-    th2.join();
-    th3.join();
-}
-
-TEST(BAGREC, file_write_md)
-{
-    RECLOG::INIT_REC("st.cbor");
-    std::thread th1([]()
-                    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        test_file_write(); });
-    std::thread th2([]()
-                    { test_file_write(); });
-    std::thread th3([]()
-                    {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        test_file_write(); });
-    th1.join();
-    th2.join();
-    th3.join();
-}
-
-TEST(BAGREC, file_read)
-{
-    ro_disk_file roo("st.cbor");
-    if (roo.is_open())
-    {
-        hd_debug hdb;
-        cborio::decoder de(roo, hdb);
-        de.run();
-        roo.close();
-    }
-}
-
-void test_raw_write()
-{
-    std::mt19937 gen{std::random_device{}()};
-    std::uniform_int_distribution<int> dis_len(0, 1000);
-    std::uniform_int_distribution<int> dis_char{'a', 'z'};
-    std::uniform_real_distribution<double> dis_flt(-10000, 1000000);
-
-    STRWNUM stw;
-
-    Timer timer;
-    size_t cnt = 0;
-    for (int i = 0; i < 10000; ++i)
-    {
-        std::string str(dis_len(gen), '\0');
-        for (auto &j : str)
-        {
-            j = static_cast<char>(dis_char(gen));
-        }
-        double d = dis_flt(gen);
-        stw = {str, d};
-        cnt = cnt + 8 + str.size();
-        RECLOG(raw) << stw.num_b << stw.str_a;
-    }
-    double elapsed = timer.elapsed() / 1000;
-    printf("Encoded %7.4f kbytes\n", cnt / 1000.0);
-    printf("%.2lf seconds, %.2lf MB/s\n", elapsed, (cnt / (1024. * 1024.)) / elapsed);
-}
-
-void test_raw_write_speed()
+TEST_F(RECLOG_TestCase, sio_func)
 {
     TEST_CBOR tcb = {1, 8.9};
     uint64_t ces = 887;
+    test_encoder_stream_io tesi(1, 1, 2.5, "opeassds");
     Timer timer;
-    unsigned int cnt = 0;
-    std::string sst("cessjo");
     for (int i = 0; i < 10000; ++i)
     {
-        cnt = cnt + 56;
-        RECLOG(raw) << tcb.a << tcb.b << sst << 1 << 5.599 << -1 << ces << tcb.a << tcb.b;
+        RECLOG(log) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb << tesi;
     }
     double elapsed = timer.elapsed();
-    printf("%.2lf usecond\n", elapsed / 10.0);
-    elapsed = elapsed / 1000.0;
-    printf("%.2lf MB/s\n", (cnt / (1024. * 1024.)) / elapsed);
-    fflush(stdout);
+    printf("%.2lf usecond per log.\n", elapsed / 10.0);
 }
 
-TEST(BAGREC, write_raw_file)
+TEST_F(RECLOG_TestCase, sio_speed)
 {
-    RECLOG::INIT_REC("st.cbor");
-    std::string tp("ceshi1");
-    RECLOG(raw) << get_date_time() << 1 << tp.size() << tp;
-    RECLOG(raw) << get_date_time() << 1 << tp.size() << tp;
-    RECLOG::EXIT_REC();
+    test_print_speed([](const STRWNUM &stw)
+                     { RECLOG(log) << stw; });
 }
 
-TEST(BAGREC, test_raw_file_write)
+TEST_F(RECLOG_TestCase, sio_speed_md)
 {
-    RECLOG::INIT_REC("st.cbor");
-    test_raw_write();
-    RECLOG::EXIT_REC();
+    std::vector<std::thread> thdvec;
+    for (auto i = 0; i < 5; ++i)
+    {
+        thdvec.emplace_back([]()
+                            { test_print_speed([](const STRWNUM &stw)
+                                               { RECLOG(log) << stw; }); });
+    }
+    for (auto i = 0; i < thdvec.size(); ++i)
+    {
+        thdvec[i].join();
+    }
 }
 
-TEST(BAGREC, test_raw_file_speed)
+TEST_F(RECFILE_TestCase, fio_func)
 {
-    RECLOG::INIT_REC("st.cbor");
-    test_raw_write_speed();
-    RECLOG::EXIT_REC();
+    TEST_CBOR tcb = {1, 8.9};
+    uint64_t ces = 887;
+    test_encoder_stream_io tesi(1, 1, 2.5, "opeassds");
+    Timer timer;
+    for (int i = 0; i < 10000; ++i)
+    {
+        RECLOG(file) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb << tesi;
+    }
+    double elapsed = timer.elapsed();
+    printf("%.2lf usecond per log.\n", elapsed / 10.0);
+}
+
+TEST_F(RECFILE_TestCase, fio_speed)
+{
+    test_print_speed([](const STRWNUM &stw)
+                     { RECLOG(file) << stw; });
+}
+
+TEST_F(RECFILE_TestCase, fio_speed_md)
+{
+    std::vector<std::thread> thdvec;
+    for (auto i = 0; i < 5; ++i)
+    {
+        thdvec.emplace_back([]()
+                            { test_print_speed([](const STRWNUM &stw)
+                                               { RECLOG(file) << stw; }); });
+    }
+    for (auto i = 0; i < thdvec.size(); ++i)
+    {
+        thdvec[i].join();
+    }
+}
+
+TEST_F(RECRAW_TestCase, raw_func)
+{
+    TEST_CBOR tcb = {1, 8.9};
+    uint64_t ces = 887;
+    std::string str("cessjo");
+    test_encoder_stream_io tesi(1, 1, 2.5, "opeassds");
+    Timer timer;
+    for (int i = 0; i < 10000; ++i)
+    {
+        RECLOG(raw) << tcb.a << tcb.b << str << 1 << 5.599
+                    << -1 << ces << tcb.a << tcb.b << tesi.a << tesi.b
+                    << tesi.c << tesi.d;
+    }
+    double elapsed = timer.elapsed();
+    printf("%.2lf usecond per log.\n", elapsed / 10.0);
+}
+
+TEST_F(RECRAW_TestCase, raw_speed)
+{
+    test_print_speed([](const STRWNUM &stw)
+                     { RECLOG(raw) << stw.num_b << stw.str_a; });
+}
+
+TEST_F(RECRAW_TestCase, raw_speed_md)
+{
+    std::vector<std::thread> thdvec;
+    for (auto i = 0; i < 5; ++i)
+    {
+        thdvec.emplace_back([]()
+                            { test_print_speed([](const STRWNUM &stw)
+                                               { RECLOG(raw) << stw.num_b << stw.str_a; }); });
+    }
+    for (auto i = 0; i < thdvec.size(); ++i)
+    {
+        thdvec[i].join();
+    }
 }

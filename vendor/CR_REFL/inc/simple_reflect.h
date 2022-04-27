@@ -138,16 +138,6 @@ using index_sequence_for = std::make_index_sequence<sizeof...(T)>;
 #define DEFINE_STRUCT(st, ...)                                              \
     struct st                                                               \
     {                                                                       \
-        friend std::ostream &operator<<(std::ostream &os, st &ss)           \
-        {                                                                   \
-            refl::serializeObj(os, ss);                                     \
-            return os;                                                      \
-        };                                                                  \
-        friend std::istream &operator>>(std::istream &is, st &ss)           \
-        {                                                                   \
-            refl::deserializeObj(is, ss);                                   \
-            return is;                                                      \
-        };                                                                  \
         template <typename, size_t>                                         \
         struct FIELD;                                                       \
         static constexpr const char *_field_name_ = _REFL_STRING(st);       \

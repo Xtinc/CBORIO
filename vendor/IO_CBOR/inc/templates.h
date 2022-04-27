@@ -17,6 +17,18 @@ namespace cborio
 {
     namespace
     {
+#if __cplusplus < 201703L
+        template <typename... T>
+        struct make_void
+        {
+            using type = void;
+        };
+        template <typename... T>
+        using void_t = typename make_void<T...>::type;
+#else
+        template <typename T>
+        using void_t = std::void_t<T>;
+#endif
         template <typename T>
         struct is_stl_list : std::false_type
         {
@@ -186,8 +198,20 @@ namespace cborio
     struct is_charptr<char *> : public std::true_type
     {
     };
-    template <>//todo char* should be str or unsigned?
+    template <> // todo char* should be str or unsigned?
     struct is_charptr<const char *> : public std::true_type
+    {
+    };
+
+    template <typename, typename = void_t<>>
+    struct IsOverloadedOperator
+        : public std::false_type
+    {
+    };
+
+    template <typename T>
+    struct IsOverloadedOperator<T, void_t<decltype(*(std::ostream *)nullptr << std::declval<T>())>>
+        : public std::true_type
     {
     };
 }

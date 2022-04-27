@@ -10,6 +10,13 @@
 
 namespace RECLOG
 {
+    class RECONFIG
+    {
+    public:
+        static FILE *fp;
+        static long long start_time;
+    };
+    
     void INIT_REC(const char *filename = "");
 
     void EXIT_REC();
@@ -218,6 +225,7 @@ namespace RECLOG
             m_ss << '}';
         }
     };
+    //todo : should be const T& or T& or T ? depend on restrictions. 
 
     struct f_lambda_file
     {
