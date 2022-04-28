@@ -20,7 +20,6 @@ namespace
 
     std::once_flag rec_init_flag;
     std::once_flag rec_exit_flag;
-    std::once_flag rec_file_flag[REC_MAX_FILENUM];
 
     inline const char *filename(const char *path)
     {

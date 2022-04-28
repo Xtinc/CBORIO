@@ -7,6 +7,8 @@ std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename = "";
 int RECLOG::RECONFIG::cnt = 0;
 
+std::once_flag rec_file_flag[REC_MAX_FILENUM];
+
 void RECLOG::INIT_REC(const char *filename)
 {
     std::call_once(rec_init_flag, init_impl, filename);
