@@ -1,8 +1,11 @@
 #include "reclog.h"
 #include "reclog_impl.h"
 
-FILE *RECLOG::RECONFIG::fp = nullptr;
-long long RECLOG::RECONFIG::start_time = 0;
+FILE *RECLOG::RECONFIG::fp{nullptr};
+long long RECLOG::RECONFIG::start_time{0};
+std::atomic_ulong RECLOG::RECONFIG::filesize{0};
+std::string RECLOG::RECONFIG::filename = "";
+int RECLOG::RECONFIG::cnt = 0;
 
 void RECLOG::INIT_REC(const char *filename)
 {
@@ -18,7 +21,12 @@ RECLOG::reclogger_raw::~reclogger_raw()
 {
     if (m_pFile != nullptr)
     {
-        fwrite(m_ss.str().c_str(), sizeof(char), m_ss.str().size(), m_pFile);
+        auto bytes_writed = fwrite(m_ss.str().c_str(), sizeof(char), m_ss.str().size(), m_pFile);
+        RECLOG::RECONFIG::filesize += bytes_writed;
+        if (RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE && RECLOG::RECONFIG::cnt < REC_MAX_FILENUM)
+        {
+            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], generate_newfile);
+        }
     }
 }
 
@@ -27,8 +35,14 @@ RECLOG::reclogger_file::~reclogger_file()
     if (m_pFile != nullptr)
     {
         en << get_date_time() << get_thread_name();
-        fwrite(m_buf.data(), sizeof(unsigned char), m_buf.size(), m_pFile);
+        auto bytes_writed = fwrite(m_buf.data(), sizeof(unsigned char), m_buf.size(), m_pFile);
+        RECLOG::RECONFIG::filesize += bytes_writed;
+        if (RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE && RECLOG::RECONFIG::cnt < REC_MAX_FILENUM)
+        {
+            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], generate_newfile);
+        }
     }
+    RECLOG(log) << RECLOG::RECONFIG::filesize;
 }
 
 RECLOG::reclogger_log::~reclogger_log()

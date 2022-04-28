@@ -4,6 +4,7 @@
 #include "simple_reflect.h"
 #include "encoder.h"
 #include <sstream>
+#include <atomic>
 
 #define RECVLOG_S(fulltype) RECLOG::make_reclogger<fulltype>(RECLOG::RECONFIG::fp, __FILE__, __LINE__)
 #define RECLOG(type) RECVLOG_S(RECLOG::reclogger_##type)
@@ -15,8 +16,11 @@ namespace RECLOG
     public:
         static FILE *fp;
         static long long start_time;
+        static std::atomic_ulong filesize;
+        static std::string filename;
+        static int cnt; 
     };
-    
+
     void INIT_REC(const char *filename = "");
 
     void EXIT_REC();
@@ -225,7 +229,7 @@ namespace RECLOG
             m_ss << '}';
         }
     };
-    //todo : should be const T& or T& or T ? depend on restrictions. 
+    // todo : should be const T& or T& or T ? depend on restrictions.
 
     struct f_lambda_file
     {

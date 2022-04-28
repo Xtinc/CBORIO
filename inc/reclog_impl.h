@@ -15,8 +15,12 @@ namespace
     constexpr int REC_THREADNAME_WIDTH = 8;
     constexpr int REC_FILENAME_WIDTH = 23;
     constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
+    constexpr unsigned long REC_MAX_FILESIZE = 102400;
+    constexpr int REC_MAX_FILENUM = 64;
+
     std::once_flag rec_init_flag;
     std::once_flag rec_exit_flag;
+    std::once_flag rec_file_flag[REC_MAX_FILENUM];
 
     inline const char *filename(const char *path)
     {
@@ -171,7 +175,9 @@ namespace
     {
         if (strlen(filename) != 0)
         {
-            RECLOG::RECONFIG::fp = fopen(filename, "wb");
+            RECLOG::RECONFIG::filename = std::string(filename);
+            RECLOG::RECONFIG::fp =
+                fopen(std::string(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)).c_str(), "wb");
         }
         else
         {
@@ -186,6 +192,14 @@ namespace
         {
             fclose(RECLOG::RECONFIG::fp);
         }
+    }
+
+    inline void generate_newfile()
+    {
+        RECLOG::RECONFIG::filesize = 0;
+        ++RECLOG::RECONFIG::cnt;
+        RECLOG::RECONFIG::fp =
+            fopen(std::string(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)).c_str(), "wb");
     }
 }
 
