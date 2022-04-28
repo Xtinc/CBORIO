@@ -213,7 +213,7 @@ public:
 
     void on_bytes(unsigned char *data, size_t size)
     {
-        printf("bytes with size %lld: ", size);
+        printf("bytes with size %ld: ", size);
         for (size_t i = 0; i < size; ++i)
         {
             printf("%2x", *(data + i));

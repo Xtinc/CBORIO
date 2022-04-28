@@ -379,7 +379,7 @@ TEST(CBOR_IO_TestCase, write_diskfile_int)
 
 TEST(CBOR_IO_TestCase, read_diskfile)
 {
-    ro_disk_file roo("s.cbor");
+    ro_disk_file roo("st.cbor19");
     if (roo.is_open())
     {
         hd_debug hdb;
