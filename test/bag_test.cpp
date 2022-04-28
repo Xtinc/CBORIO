@@ -222,7 +222,7 @@ TEST_F(RECFILE_TestCase, fio_speed)
 TEST_F(RECFILE_TestCase, fio_speed_md)
 {
     std::vector<std::thread> thdvec;
-    for (size_t i = 0; i < 5; ++i)
+    for (size_t i = 0; i < 4; ++i)
     {
         thdvec.emplace_back([this]()
                             { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
