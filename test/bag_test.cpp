@@ -39,7 +39,7 @@ void generate_rnd_str(std::vector<STRWNUM> &strlist, size_t &cnt)
         double d = dis_flt(gen);
         stw = {str, d};
         strlist.push_back(stw);
-        cnt = cnt + 8 + str.size();
+        cnt = cnt + str.size() + 8;
     }
 }
 

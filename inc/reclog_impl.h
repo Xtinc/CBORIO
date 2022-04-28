@@ -199,7 +199,8 @@ namespace
         RECLOG::RECONFIG::filesize = 0;
         ++RECLOG::RECONFIG::cnt;
         RECLOG::RECONFIG::fp =
-            fopen(std::string(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)).c_str(), "wb");
+            freopen(std::string(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)).c_str(),
+                    "wb", RECLOG::RECONFIG::fp);
     }
 }
 

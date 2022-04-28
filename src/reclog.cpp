@@ -3,7 +3,7 @@
 
 FILE *RECLOG::RECONFIG::fp{nullptr};
 long long RECLOG::RECONFIG::start_time{0};
-std::atomic_ulong RECLOG::RECONFIG::filesize{0};
+std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename = "";
 int RECLOG::RECONFIG::cnt = 0;
 
@@ -23,7 +23,7 @@ RECLOG::reclogger_raw::~reclogger_raw()
     {
         auto bytes_writed = fwrite(m_ss.str().c_str(), sizeof(char), m_ss.str().size(), m_pFile);
         RECLOG::RECONFIG::filesize += bytes_writed;
-        if (RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE && RECLOG::RECONFIG::cnt < REC_MAX_FILENUM)
+        if (RECLOG::RECONFIG::cnt < REC_MAX_FILENUM && RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
         {
             std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], generate_newfile);
         }
@@ -42,7 +42,10 @@ RECLOG::reclogger_file::~reclogger_file()
             std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], generate_newfile);
         }
     }
-    RECLOG(log) << RECLOG::RECONFIG::filesize;
+    else
+    {
+        RECLOG(log) << "error";
+    }
 }
 
 RECLOG::reclogger_log::~reclogger_log()

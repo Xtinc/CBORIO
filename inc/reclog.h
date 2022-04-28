@@ -16,9 +16,9 @@ namespace RECLOG
     public:
         static FILE *fp;
         static long long start_time;
-        static std::atomic_ulong filesize;
+        static std::atomic_size_t filesize;
         static std::string filename;
-        static int cnt; 
+        static int cnt;
     };
 
     void INIT_REC(const char *filename = "");
@@ -125,7 +125,7 @@ namespace RECLOG
 
         template <typename T,
                   typename std::enable_if<refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
-        reclogger_file &operator<<(T &&t)
+        reclogger_file &operator<<(const T &t)
         {
             serializeObj(t.st_t, t.st_name);
             return *this;
@@ -133,7 +133,7 @@ namespace RECLOG
 
         template <typename T,
                   typename std::enable_if<!refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
-        reclogger_file &operator<<(T &&t)
+        reclogger_file &operator<<(const T &t)
         {
             serializeObj(t);
             return *this;
@@ -183,7 +183,7 @@ namespace RECLOG
 
         template <typename T,
                   typename std::enable_if<refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
-        reclogger_log &operator<<(T &&t)
+        reclogger_log &operator<<(const T &t)
         {
             serializeObj(t.st_t, t.st_name);
             return *this;
@@ -191,7 +191,7 @@ namespace RECLOG
 
         template <typename T,
                   typename std::enable_if<!refl::is_refl_info_st<typename std::decay<T>::type>::value>::type * = nullptr>
-        reclogger_log &operator<<(T &&t)
+        reclogger_log &operator<<(const T &t)
         {
             serializeObj(t);
             return *this;
