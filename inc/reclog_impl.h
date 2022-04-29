@@ -10,16 +10,13 @@
 #include <thread>
 #include <mutex>
 
-namespace
+namespace details
 {
     constexpr int REC_THREADNAME_WIDTH = 8;
     constexpr int REC_FILENAME_WIDTH = 23;
     constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
     constexpr unsigned long REC_MAX_FILESIZE = 102400;
     constexpr int REC_MAX_FILENUM = 64;
-
-    std::once_flag rec_init_flag;
-    std::once_flag rec_exit_flag;
 
     inline const char *filename(const char *path)
     {
@@ -169,9 +166,14 @@ namespace
         print_preamble_header(preamble_explain, sizeof(preamble_explain));
         printf("%s\n", preamble_explain);
     }
-
+#if __GNUC__
+    void install_signal_handlers();
+#endif
     inline void init_impl(const char *filename)
     {
+#if __GNUC__
+        install_signal_handlers();
+#endif
         if (strlen(filename) != 0)
         {
             RECLOG::RECONFIG::filename = std::string(filename);

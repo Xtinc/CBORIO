@@ -127,7 +127,7 @@ TEST_F(RECLOG_TestCase, sio_time)
     for (int i = 0; i < 100; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        print_date_time(get_date_time(), td, 50);
+        details::print_date_time(details::get_date_time(), td, 50);
         RECLOG(log) << td[i];
     }
 
@@ -137,7 +137,7 @@ TEST_F(RECLOG_TestCase, sio_time)
 TEST_F(RECLOG_TestCase, sio_thread)
 {
     char *td = new char[50];
-    print_thread_name(get_thread_name(), td, 50);
+    details::print_thread_name(details::get_thread_name(), td, 50);
     RECLOG(log) << td;
     delete[] td;
 }

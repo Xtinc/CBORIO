@@ -229,7 +229,6 @@ namespace RECLOG
             m_ss << '}';
         }
     };
-    // todo : should be const T& or T& or T ? depend on restrictions.
 
     struct f_lambda_file
     {

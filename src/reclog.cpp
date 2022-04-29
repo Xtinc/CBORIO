@@ -6,6 +6,7 @@
 #include <dlfcn.h>    // for dladdr
 #include <execinfo.h> // for backtrace
 #include <signal.h>   // for catch signals
+#include <unistd.h>   // for getpid
 #endif
 
 FILE *RECLOG::RECONFIG::fp{nullptr};
@@ -14,7 +15,9 @@ std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename = "";
 int RECLOG::RECONFIG::cnt = 0;
 
-std::once_flag rec_file_flag[REC_MAX_FILENUM];
+std::once_flag rec_init_flag;
+std::once_flag rec_exit_flag;
+std::once_flag rec_file_flag[details::REC_MAX_FILENUM];
 
 #if __GNUC__
 std::recursive_mutex s_mutex;
@@ -75,7 +78,7 @@ void signal_handler(int signal_number, siginfo_t *, void *)
 
     printf("\n");
     printf("REC caught a signal: ");
-    printf(signal_name);
+    printf("%s", signal_name);
     printf("\n");
 
     // --------------------------------------------------------------------
@@ -102,7 +105,7 @@ void signal_handler(int signal_number, siginfo_t *, void *)
     call_default_signal_handler(signal_number);
 }
 
-void install_signal_handlers()
+void details::install_signal_handlers()
 {
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
@@ -143,12 +146,12 @@ void install_signal_handlers()
 
 void RECLOG::INIT_REC(const char *filename)
 {
-    std::call_once(rec_init_flag, init_impl, filename);
+    std::call_once(rec_init_flag, details::init_impl, filename);
 }
 
 void RECLOG::EXIT_REC()
 {
-    std::call_once(rec_exit_flag, exit_impl);
+    std::call_once(rec_exit_flag, details::exit_impl);
 }
 
 RECLOG::reclogger_raw::~reclogger_raw()
@@ -157,9 +160,9 @@ RECLOG::reclogger_raw::~reclogger_raw()
     {
         auto bytes_writed = fwrite(m_ss.str().c_str(), sizeof(char), m_ss.str().size(), m_pFile);
         RECLOG::RECONFIG::filesize += bytes_writed;
-        if (RECLOG::RECONFIG::cnt < REC_MAX_FILENUM && RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
+        if (RECLOG::RECONFIG::cnt < details::REC_MAX_FILENUM && RECLOG::RECONFIG::filesize > details::REC_MAX_FILESIZE)
         {
-            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], generate_newfile);
+            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], details::generate_newfile);
         }
     }
 }
@@ -168,12 +171,12 @@ RECLOG::reclogger_file::~reclogger_file()
 {
     if (m_pFile != nullptr)
     {
-        en << get_date_time() << get_thread_name();
+        en << details::get_date_time() << details::get_thread_name();
         auto bytes_writed = fwrite(m_buf.data(), sizeof(unsigned char), m_buf.size(), m_pFile);
         RECLOG::RECONFIG::filesize += bytes_writed;
-        if (RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE && RECLOG::RECONFIG::cnt < REC_MAX_FILENUM)
+        if (RECLOG::RECONFIG::filesize > details::REC_MAX_FILESIZE && RECLOG::RECONFIG::cnt < details::REC_MAX_FILENUM)
         {
-            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], generate_newfile);
+            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], details::generate_newfile);
         }
     }
     else
@@ -184,7 +187,7 @@ RECLOG::reclogger_file::~reclogger_file()
 
 RECLOG::reclogger_log::~reclogger_log()
 {
-    char preamble_buffer[REC_PREAMBLE_WIDTH];
-    print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
+    char preamble_buffer[details::REC_PREAMBLE_WIDTH];
+    details::print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
     printf("%s%s\n", preamble_buffer, m_ss.str().c_str());
 }
