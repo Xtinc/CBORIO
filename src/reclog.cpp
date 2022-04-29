@@ -1,6 +1,13 @@
 #include "reclog.h"
 #include "reclog_impl.h"
 
+#if __GNUC__
+#include <cxxabi.h>   // for __cxa_demangle
+#include <dlfcn.h>    // for dladdr
+#include <execinfo.h> // for backtrace
+#include <signal.h>   // for catch signals
+#endif
+
 FILE *RECLOG::RECONFIG::fp{nullptr};
 long long RECLOG::RECONFIG::start_time{0};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
@@ -8,6 +15,131 @@ std::string RECLOG::RECONFIG::filename = "";
 int RECLOG::RECONFIG::cnt = 0;
 
 std::once_flag rec_file_flag[REC_MAX_FILENUM];
+
+#if __GNUC__
+std::recursive_mutex s_mutex;
+
+void call_default_signal_handler(int signal_number)
+{
+    struct sigaction sig_action;
+    memset(&sig_action, 0, sizeof(sig_action));
+    sigemptyset(&sig_action.sa_mask);
+    sig_action.sa_handler = SIG_DFL;
+    sigaction(signal_number, &sig_action, NULL);
+    kill(getpid(), signal_number);
+    // kill only emit signal not kill the program.
+}
+
+void flush()
+{
+    std::lock_guard<std::recursive_mutex> lock(s_mutex);
+    fflush(stdout);
+}
+
+void signal_handler(int signal_number, siginfo_t *, void *)
+{
+    const char *signal_name = "UNKNOWN SIGNAL";
+
+    if (signal_number == SIGABRT)
+    {
+        signal_name = "SIGABRT";
+    }
+    else if (signal_number == SIGBUS)
+    {
+        signal_name = "SIGBUS";
+    }
+    else if (signal_number == SIGFPE)
+    {
+        signal_name = "SIGFPE";
+    }
+    else if (signal_number == SIGILL)
+    {
+        signal_name = "SIGILL";
+    }
+    else if (signal_number == SIGINT)
+    {
+        signal_name = "SIGINT";
+    }
+    else if (signal_number == SIGSEGV)
+    {
+        signal_name = "SIGSEGV";
+    }
+    else if (signal_number == SIGTERM)
+    {
+        signal_name = "SIGTERM";
+    }
+    else
+    {
+        signal_name = "UNKNOWN SIGNAL";
+    }
+
+    printf("\n");
+    printf("REC caught a signal: ");
+    printf(signal_name);
+    printf("\n");
+
+    // --------------------------------------------------------------------
+    //      WARNING: FROM NOW ANY OPERATIONS IN USR SPACE IS NOT SAFE
+    // --------------------------------------------------------------------
+
+    if (true)
+    {
+        flush();
+        try
+        {
+            RECLOG(log) << "Signal: " << signal_name;
+        }
+        catch (...)
+        {
+            // This can happed due to s_fatal_handler.
+            printf("Exception caught and ignored by signal handler.\n");
+        }
+        flush();
+
+        // --------------------------------------------------------------------
+    }
+
+    call_default_signal_handler(signal_number);
+}
+
+void install_signal_handlers()
+{
+    struct sigaction sig_action;
+    memset(&sig_action, 0, sizeof(sig_action));
+    sigemptyset(&sig_action.sa_mask);
+    sig_action.sa_flags |= SA_SIGINFO;
+    sig_action.sa_sigaction = &signal_handler;
+
+    if (sigaction(SIGABRT, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGABRT";
+    }
+    if (sigaction(SIGBUS, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGBUS";
+    }
+    if (sigaction(SIGFPE, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGFPE";
+    }
+    if (sigaction(SIGILL, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGILL";
+    }
+    if (sigaction(SIGINT, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGINT";
+    }
+    if (sigaction(SIGSEGV, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGSEGV";
+    }
+    if (sigaction(SIGTERM, &sig_action, NULL) != -1)
+    {
+        RECLOG(log) << "Failed to install handler for SIGTERM";
+    }
+}
+#endif
 
 void RECLOG::INIT_REC(const char *filename)
 {
