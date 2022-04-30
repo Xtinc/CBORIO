@@ -5,25 +5,40 @@
 #include "encoder.h"
 #include <sstream>
 #include <atomic>
+#include <memory>
 
-#define RECVLOG_S(fulltype) RECLOG::make_reclogger<fulltype>(RECLOG::RECONFIG::fp, __FILE__, __LINE__)
+#define RECVLOG_S(fulltype) RECLOG::make_reclogger<fulltype>(__FILE__, __LINE__)
 #define RECLOG(type) RECVLOG_S(RECLOG::reclogger_##type)
 
 namespace RECLOG
 {
+    class FileBase
+    {
+    public:
+        FileBase(){};
+        virtual ~FileBase(){};
+        virtual size_t WriteData(const void *, size_t, size_t)
+        {
+            return 0;
+        };
+
+    private:
+    };
+
+    using FilePtr = std::shared_ptr<FileBase>;
+
     class RECONFIG
     {
     public:
-        static FILE *fp;
+        static FilePtr g_fp;
         static long long start_time;
         static std::atomic_size_t filesize;
         static std::string filename;
         static int cnt;
+        static FilePtr GetCurFileFp();
     };
 
     void INIT_REC(const char *filename = "");
-
-    void EXIT_REC();
 
     struct f_lambda_file;
     struct f_lambda_log;
@@ -32,14 +47,14 @@ namespace RECLOG
     {
     private:
         std::ostringstream m_ss;
-        FILE *m_pFile;
+        FilePtr m_pFile;
 
     public:
-        reclogger_raw(FILE *fp) : m_pFile(fp) {}
+        reclogger_raw(FilePtr fp) : m_pFile(fp) {}
         ~reclogger_raw();
 
         reclogger_raw(reclogger_raw &&other)
-            : m_ss(std::move(other.m_ss)), m_pFile(other.m_pFile) {}
+            : m_ss(std::move(other.m_ss)), m_pFile(std::move(other.m_pFile)) {}
 
         template <typename T,
                   typename std::enable_if<std::is_fundamental<T>::value, bool>::type = true>
@@ -116,10 +131,10 @@ namespace RECLOG
         };
         cborbuf m_buf;
         cborio::encoder en;
-        FILE *m_pFile;
+        FilePtr m_pFile;
 
     public:
-        reclogger_file(FILE *fp)
+        reclogger_file(FilePtr fp)
             : m_buf(4096), en(m_buf), m_pFile(fp) {}
         ~reclogger_file();
 
@@ -264,21 +279,21 @@ namespace RECLOG
 
     template <typename T>
     typename std::enable_if<std::is_same<T, reclogger_raw>::value, reclogger_raw>::type
-    make_reclogger(FILE *fp, const char *, unsigned)
+    make_reclogger(const char *, unsigned)
     {
-        return reclogger_raw(fp);
+        return reclogger_raw(RECONFIG::GetCurFileFp());
     }
 
     template <typename T>
     typename std::enable_if<std::is_same<T, reclogger_file>::value, reclogger_file>::type
-    make_reclogger(FILE *fp, const char *, unsigned)
+    make_reclogger(const char *, unsigned)
     {
-        return reclogger_file(fp);
+        return reclogger_file(RECONFIG::GetCurFileFp());
     }
 
     template <typename T>
     typename std::enable_if<std::is_same<T, reclogger_log>::value, reclogger_log>::type
-    make_reclogger(FILE *, const char *file, unsigned line)
+    make_reclogger(const char *file, unsigned line)
     {
         return reclogger_log(0, file, line);
     }

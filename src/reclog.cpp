@@ -9,15 +9,56 @@
 #include <unistd.h>   // for getpid
 #endif
 
-FILE *RECLOG::RECONFIG::fp{nullptr};
 long long RECLOG::RECONFIG::start_time{0};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename = "";
 int RECLOG::RECONFIG::cnt = 0;
+RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
 
 std::once_flag rec_init_flag;
 std::once_flag rec_exit_flag;
 std::once_flag rec_file_flag[details::REC_MAX_FILENUM];
+
+class FileDisk : public RECLOG::FileBase
+{
+public:
+    FileDisk(const std::string &filename)
+    {
+        m_fp = fopen(filename.c_str(), "wb");
+    };
+    ~FileDisk()
+    {
+        if (m_fp != nullptr)
+        {
+            fclose(m_fp);
+        }
+    };
+
+    size_t WriteData(const void *src, size_t ele_size, size_t len) override
+    {
+        return m_fp == nullptr ? 0 : fwrite(src, ele_size, len, m_fp);
+    }
+
+private:
+    FILE *m_fp;
+};
+
+void GenerateNewFile(RECLOG::FilePtr &fp)
+{
+    RECLOG::RECONFIG::filesize = 0;
+    ++RECLOG::RECONFIG::cnt;
+    fp.reset(new FileDisk(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)));
+}
+
+RECLOG::FilePtr RECLOG::RECONFIG::GetCurFileFp()
+{
+    if (RECLOG::RECONFIG::cnt < details::REC_MAX_FILENUM &&
+        RECLOG::RECONFIG::filesize > details::REC_MAX_FILESIZE)
+    {
+        std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
+    }
+    return RECLOG::RECONFIG::g_fp;
+}
 
 #if __GNUC__
 std::recursive_mutex s_mutex;
@@ -158,7 +199,7 @@ void signal_handler(int signal_number, siginfo_t *, void *)
     call_default_signal_handler(signal_number);
 }
 
-void details::install_signal_handlers()
+void install_signal_handlers()
 {
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
@@ -166,76 +207,70 @@ void details::install_signal_handlers()
     sig_action.sa_flags |= SA_SIGINFO;
     sig_action.sa_sigaction = &signal_handler;
 
-    if (sigaction(SIGABRT, &sig_action, NULL) != -1)
+    if (sigaction(SIGABRT, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGABRT";
     }
-    if (sigaction(SIGBUS, &sig_action, NULL) != -1)
+    if (sigaction(SIGBUS, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGBUS";
     }
-    if (sigaction(SIGFPE, &sig_action, NULL) != -1)
+    if (sigaction(SIGFPE, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGFPE";
     }
-    if (sigaction(SIGILL, &sig_action, NULL) != -1)
+    if (sigaction(SIGILL, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGILL";
     }
-    if (sigaction(SIGINT, &sig_action, NULL) != -1)
+    if (sigaction(SIGINT, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGINT";
     }
-    if (sigaction(SIGSEGV, &sig_action, NULL) != -1)
+    if (sigaction(SIGSEGV, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGSEGV";
     }
-    if (sigaction(SIGTERM, &sig_action, NULL) != -1)
+    if (sigaction(SIGTERM, &sig_action, NULL) != 0)
     {
         RECLOG(log) << "Failed to install handler for SIGTERM";
     }
 }
 #endif
 
-void RECLOG::INIT_REC(const char *filename)
+inline void init_impl(const char *filename)
 {
-    std::call_once(rec_init_flag, details::init_impl, filename);
+#if __GNUC__
+    install_signal_handlers();
+#endif
+    if (strlen(filename) != 0)
+    {
+        RECLOG::RECONFIG::filename = std::string(filename);
+        RECLOG::RECONFIG::g_fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename);
+    }
+    else
+    {
+        RECLOG::RECONFIG::start_time = details::get_date_time();
+        details::print_header();
+    }
 }
 
-void RECLOG::EXIT_REC()
+void RECLOG::INIT_REC(const char *filename)
 {
-    std::call_once(rec_exit_flag, details::exit_impl);
+    std::call_once(rec_init_flag, init_impl, filename);
 }
 
 RECLOG::reclogger_raw::~reclogger_raw()
 {
-    if (m_pFile != nullptr)
-    {
-        auto bytes_writed = fwrite(m_ss.str().c_str(), sizeof(char), m_ss.str().size(), m_pFile);
-        RECLOG::RECONFIG::filesize += bytes_writed;
-        if (RECLOG::RECONFIG::cnt < details::REC_MAX_FILENUM && RECLOG::RECONFIG::filesize > details::REC_MAX_FILESIZE)
-        {
-            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], details::generate_newfile);
-        }
-    }
+    auto bytes_writed = m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
+    RECLOG::RECONFIG::filesize += bytes_writed;
 }
 
 RECLOG::reclogger_file::~reclogger_file()
 {
-    if (m_pFile != nullptr)
-    {
-        en << details::get_date_time() << details::get_thread_name();
-        auto bytes_writed = fwrite(m_buf.data(), sizeof(unsigned char), m_buf.size(), m_pFile);
-        RECLOG::RECONFIG::filesize += bytes_writed;
-        if (RECLOG::RECONFIG::filesize > details::REC_MAX_FILESIZE && RECLOG::RECONFIG::cnt < details::REC_MAX_FILENUM)
-        {
-            std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], details::generate_newfile);
-        }
-    }
-    else
-    {
-        RECLOG(log) << "error";
-    }
+    en << details::get_date_time() << details::get_thread_name();
+    auto bytes_writed = m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
+    RECLOG::RECONFIG::filesize += bytes_writed;
 }
 
 RECLOG::reclogger_log::~reclogger_log()

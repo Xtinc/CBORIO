@@ -166,43 +166,5 @@ namespace details
         print_preamble_header(preamble_explain, sizeof(preamble_explain));
         printf("%s\n", preamble_explain);
     }
-#if __GNUC__
-    void install_signal_handlers();
-#endif
-    inline void init_impl(const char *filename)
-    {
-#if __GNUC__
-        install_signal_handlers();
-#endif
-        if (strlen(filename) != 0)
-        {
-            RECLOG::RECONFIG::filename = std::string(filename);
-            RECLOG::RECONFIG::fp =
-                fopen(std::string(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)).c_str(), "wb");
-        }
-        else
-        {
-            RECLOG::RECONFIG::start_time = get_date_time();
-            print_header();
-        }
-    }
-
-    inline void exit_impl()
-    {
-        if (RECLOG::RECONFIG::fp != nullptr)
-        {
-            fclose(RECLOG::RECONFIG::fp);
-        }
-    }
-
-    inline void generate_newfile()
-    {
-        RECLOG::RECONFIG::filesize = 0;
-        ++RECLOG::RECONFIG::cnt;
-        RECLOG::RECONFIG::fp =
-            freopen(std::string(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)).c_str(),
-                    "wb", RECLOG::RECONFIG::fp);
-    }
 }
-
 #endif
