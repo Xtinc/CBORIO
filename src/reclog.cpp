@@ -22,6 +22,58 @@ std::once_flag rec_file_flag[details::REC_MAX_FILENUM];
 #if __GNUC__
 std::recursive_mutex s_mutex;
 
+std::string stacktrace_as_stdstring(int skip)
+{
+    // From https://gist.github.com/fmela/591333
+    void *callstack[128];
+    const auto max_frames = sizeof(callstack) / sizeof(callstack[0]);
+    int num_frames = backtrace(callstack, max_frames);
+    char **symbols = backtrace_symbols(callstack, num_frames);
+
+    std::string result;
+    // Print stack traces so the most relevant ones are written last
+    // Rationale: http://yellerapp.com/posts/2015-01-22-upside-down-stacktraces.html
+    for (int i = num_frames - 1; i >= skip; --i)
+    {
+        char buf[1024];
+        Dl_info info;
+        if (dladdr(callstack[i], &info) && info.dli_sname)
+        {
+            char *demangled = NULL;
+            int status = -1;
+            if (info.dli_sname[0] == '_')
+            {
+                demangled = abi::__cxa_demangle(info.dli_sname, 0, 0, &status);
+            }
+            snprintf(buf, sizeof(buf), "%-3d %*p %s + %zd\n",
+                     i - skip, int(2 + sizeof(void *) * 2), callstack[i],
+                     status == 0 ? demangled : info.dli_sname == 0 ? symbols[i]
+                                                                   : info.dli_sname,
+                     static_cast<char *>(callstack[i]) - static_cast<char *>(info.dli_saddr));
+            free(demangled);
+        }
+        else
+        {
+            snprintf(buf, sizeof(buf), "%-3d %*p %s\n",
+                     i - skip, int(2 + sizeof(void *) * 2), callstack[i], symbols[i]);
+        }
+        result += buf;
+    }
+    free(symbols);
+
+    if (num_frames == max_frames)
+    {
+        result = "[truncated]\n" + result;
+    }
+
+    if (!result.empty() && result[result.size() - 1] == '\n')
+    {
+        result.resize(result.size() - 1);
+    }
+
+    return result;
+}
+
 void call_default_signal_handler(int signal_number)
 {
     struct sigaction sig_action;
@@ -91,6 +143,7 @@ void signal_handler(int signal_number, siginfo_t *, void *)
         try
         {
             RECLOG(log) << "Signal: " << signal_name;
+            RECLOG(log) << stacktrace_as_stdstring(0);
         }
         catch (...)
         {
