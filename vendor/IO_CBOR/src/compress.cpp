@@ -1,405 +1,438 @@
 #include "compress.h"
-#include <cassert>
-#include <memory.h>
-#include <algorithm>
+#include <array>
+#include <vector>
 
-using namespace cborio;
-
-#define LOGV(level, s, ...)                    \
-    do                                         \
-    {                                          \
-        if (level <= 0)                        \
-            fprintf(stderr, s, ##__VA_ARGS__); \
-    } while (0);
-
-constexpr int64_t kMaxChunkSize = 1 << 18; // 256k
-constexpr int kMaxSymbols = 256;
-constexpr int kMaxHuffCodeLength = 11;
-
-std::string toBinary(int v, int size)
+namespace cbor
 {
-    std::string result;
-    for (int j = 0; j < size; ++j)
+    using CodeType = std::uint32_t;
+
+    constexpr CodeType dms{1024 * 512};
+    constexpr CodeType MetaCode_EOF = 0x00;
+    constexpr unsigned int ReadBufSize = 512;
+
+    class EncoderDictionary
     {
-        result += ((v >> (size - j - 1)) & 1) ? "1" : "0";
-    }
-    return result;
-}
-
-// https://stackoverflow.com/questions/994593/how-to-do-an-integer-log2-in-c
-int log2(int v)
-{
-    if (v > 0)
-    {
-        return 31 - llvm_clz(v);
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-int BitReader::readBit()
-{
-    int r = m_bits >> 31;
-    m_bits <<= 1;
-    ++m_pos;
-    return r;
-}
-
-// https://stackoverflow.com/questions/18799344/shifting-a-32-bit-integer-by-32-bits
-// https://fgiesen.wordpress.com/2018/02/19/reading-bits-in-far-too-many-ways-part-1/
-
-int BitReader::readBits(int n)
-{
-    // m_bits>>1>>(31-n) instead of >>32-n for n=0
-    // avoid case >>32 & >>0
-    assert(n >= 0 && n < 32);
-    int r = m_bits >> 1 >> (31 - n);
-    m_bits <<= n;
-    m_pos += n;
-    return r;
-}
-
-void BitReader::refill()
-{
-    while (m_pos >= 0)
-    {
-        m_bits |= (m_cur < m_end ? *m_cur : 0) << m_pos;
-        m_pos -= 8;
-        ++m_cur;
-    }
-}
-
-void BitReader::byteAlign()
-{
-    int extra_bits = m_pos & 7;
-    if (extra_bits)
-    {
-        readBits(8 - extra_bits);
-    }
-}
-
-void BitWriter::writeBit(int v)
-{
-    assert(v >= 0);
-    m_bits = (m_bits << 1) | v;
-    ++m_pos;
-    if (m_pos >= 8)
-    {
-        flush();
-    }
-}
-
-void BitWriter::writeBits(int v, int n)
-{
-    assert(v >= 0);
-    assert(n > 0 && n <= 32);
-    m_bits = (m_bits << 1 << (n - 1)) | v;
-    m_pos += n;
-    if (m_pos >= 8)
-    {
-        flush();
-    }
-}
-
-int64_t BitWriter::finish()
-{
-    flush();
-    assert(m_pos >= 0 && m_pos < 8);
-    if (m_pos > 0)
-    {
-        // Final byte is a bit tricky.  Handle it specially.
-        *m_cur = (m_bits & ((1 << m_pos) - 1)) << (8 - m_pos);
-        ++m_cur;
-        m_pos = 0;
-    }
-    return m_cur - m_start;
-}
-
-void BitWriter::flush()
-{
-    while (m_pos >= 8)
-    {
-        m_pos -= 8;
-        *m_cur = (m_bits >> m_pos) & 0xFF;
-        ++m_cur;
-    }
-}
-
-// http://cbloomrants.blogspot.com/2010/08/08-12-10-lost-huffman-paper.html
-// https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md
-
-void HuffmanEncoder::buildTable()
-{
-    Node *q[256];
-    int num_symbols = 0;
-    for (int i = 0; i < max_symbols; ++i)
-    {
-        if (m_nodes[i].freq)
+        struct Node
         {
-            m_nodes[num_symbols] = m_nodes[i];
-            q[num_symbols] = &m_nodes[num_symbols];
-            ++num_symbols;
-        }
-    }
-
-    auto c = [](const Node *l, const Node *r)
-    {
-        return l->freq > r->freq;
-    };
-    std::make_heap(&q[0], &q[num_symbols], c);
-
-    // Build Huffman tree
-    for (int i = num_symbols; i > 1; --i)
-    {
-        Node *n1 = q[0];
-        std::pop_heap(&q[0], &q[i], c);
-        Node *n2 = q[0];
-        std::pop_heap(&q[0], &q[i - 1], c);
-
-        Node *parent = &m_nodes[num_symbols + i];
-        parent->freq = n1->freq + n2->freq;
-        parent->symbol = -1;
-        parent->l = n2;
-        parent->r = n1;
-        q[i - 2] = parent;
-        std::push_heap(&q[0], &q[i - 1], c);
-    }
-
-    // Label the distances from the root for the leafs
-    walk(q[0], num_symbols == 1 ? 1 : 0);
-    // Sort leaf nodes into level order.  This is required
-    // for both length limiting and writing the table.
-    std::sort(&m_nodes[0], &m_nodes[num_symbols], [](const Node &l, const Node &r)
-              { return l.freq < r.freq; });
-
-    // limitLength(num_symbols);
-    writeTable(num_symbols);
-    buildCodes(num_symbols);
-}
-
-void HuffmanEncoder::writeTable(int num_symbols)
-{
-    const int kSymBits = log2(max_symbols);
-    m_writer.writeBits(num_symbols - 1, kSymBits);
-
-    for (int i = 0; i < num_symbols; ++i)
-    {
-        m_writer.writeBits(m_nodes[i].symbol, kSymBits);
-        m_writer.writeBits(m_nodes[i].freq - 1, 4);
-    }
-
-    // Byte align after the table
-    m_writer.finish();
-}
-
-void HuffmanEncoder::buildCodes(int num_symbols)
-{
-    int code = 0;
-    int last_level = -1;
-    //LOGV(2, "Write num_symbols %d\n", num_symbols);
-    for (int i = 0; i < num_symbols; ++i)
-    {
-        // Build the binary representation.
-        int level = m_nodes[i].freq;
-        if (last_level != level)
-        {
-            if (last_level != -1)
+            explicit Node(char c) : first(dms), c(c), left(dms), right(dms)
             {
-                ++code;
-                code <<= (level - last_level);
             }
-            last_level = level;
-        }
-        else
+
+            char c;         ///< Byte.
+            CodeType first; ///< Code of first child string.
+            CodeType left;  ///< Code of child node with byte < `c`.
+            CodeType right; ///< Code of child node with byte > `c`.
+        };
+
+    public:
+        EncoderDictionary()
         {
-            ++code;
+            const int minc = std::numeric_limits<char>::min();
+            const int maxc = std::numeric_limits<char>::max();
+            CodeType k{0};
+
+            for (auto c = minc; c <= maxc; ++c)
+                initials[static_cast<unsigned char>(c)] = k++;
+
+            vn.reserve(dms);
+            reset();
         }
 
-        int symbol = m_nodes[i].symbol;
-        m_len[symbol] = level;
-        m_code[symbol] = code;
-
-        //LOGV(2, "code:%s hex:%x level:%d symbol:%d\n", toBinary(code, level).c_str(), code, level, symbol);
-    }
-}
-
-// https://en.wikipedia.org/wiki/Package-merge_algorithm
-// http://cbloomrants.blogspot.com/2010/07/07-03-10-length-limitted-huffman-codes.html
-
-void HuffmanEncoder::limitLength(int num_symbols)
-{
-    // Limit the maximum code length
-    int k = 0;
-    int maxk = (1 << kMaxHuffCodeLength) - 1;
-    for (int i = num_symbols - 1; i >= 0; --i)
-    {
-        m_nodes[i].freq = std::min(m_nodes[i].freq, kMaxHuffCodeLength);
-        k += 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
-    }
-    //LOGV(3, "k before: %.6lf\n", k / double(maxk));
-    for (int i = num_symbols - 1; i >= 0 && k > maxk; --i)
-    {
-        while (m_nodes[i].freq < kMaxHuffCodeLength)
+        void reset()
         {
-            ++m_nodes[i].freq;
-            k -= 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
-        }
-    }
-    //LOGV(3, "k pass1: %.6lf\n", k / double(maxk));
-    for (int i = 0; i < num_symbols; ++i)
-    {
-        while (k + (1 << (kMaxHuffCodeLength - m_nodes[i].freq)) <= maxk)
-        {
-            k += 1 << (kMaxHuffCodeLength - m_nodes[i].freq);
-            --m_nodes[i].freq;
-        }
-    }
-    //LOGV(3, "k pass2: %x, %x\n", k, maxk);
-}
+            vn.clear();
 
-void HuffmanEncoder::walk(Node *n, int level)
-{
-    if (n->symbol != -1)
-    {
-        n->freq = level;
-        return;
-    }
-    walk(n->l, level + 1);
-    walk(n->r, level + 1);
-}
+            const int minc = std::numeric_limits<char>::min();
+            const int maxc = std::numeric_limits<char>::max();
 
-void HuffmanDecoder::readTable()
-{
-    m_br.refill();
-    num_symbols = m_br.readBits(m_symbits) + 1;
-
-    assert(num_symbols <= kMaxSymbols);
-
-    for (int i = 0; i < num_symbols; ++i)
-    {
-        m_br.refill();
-        int symbol = m_br.readBits(m_symbits);
-        int codelen = m_br.readBits(4) + 1;
-        //LOGV(2, "sym:%d len:%d\n", symbol, codelen);
-
-        ++codelen_cnt[codelen];
-        symbol_t[i] = symbol;
-        min_codelen = std::min(min_codelen, codelen);
-        max_codelen = std::max(max_codelen, codelen);
-    }
-    //LOGV(1, "num_sym %d codelen(min:%d, max:%d)\n", num_symbols, min_codelen, max_codelen);
-    // https://www.jianshu.com/p/4cbbfed4160b
-    // Ensure we catch up to be byte aligned.
-    m_br.byteAlign();
-
-    assignCodes();
-}
-
-void HuffmanDecoder::decode(uint8_t *output, uint8_t *output_end)
-{
-    uint8_t *src = m_br.cursor();
-    uint8_t *src_end = m_br.end();
-    int position = 24;
-    uint32_t bits = 0;
-
-    for (;;)
-    {
-        while (position >= 0)
-        {
-            bits |= (src < src_end ? *src++ : 0) << position;
-            position -= 8;
-        }
-        int n = bits >> (32 - max_codelen);
-        int len = bits_to_len[n];
-        *output++ = bits_to_sym[n];
-        if (output >= output_end)
-        {
-            break;
-        }
-        bits <<= len;
-        position += len;
-    }
-}
-
-uint8_t HuffmanDecoder::decodeOne()
-{
-    m_br.refill();
-    int n = m_br.bits() >> (32 - max_codelen);
-    int len = bits_to_len[n];
-    m_br.readBits(len);
-    return bits_to_sym[n];
-}
-
-void HuffmanDecoder::assignCodes()
-{
-    int p = 0;
-    uint8_t *cursym = &symbol_t[0];
-    for (int i = min_codelen; i <= max_codelen; ++i)
-    {
-        int n = codelen_cnt[i];
-        if (n)
-        {
-            int shift = max_codelen - i;
-            memset(bits_to_len + p, i, n << shift);
-            int m = 1 << shift;
-            do
+            for (auto c = minc; c <= maxc; ++c)
             {
-                memset(bits_to_sym + p, *cursym++, m);
-                p += m;
-            } while (--n);
+                vn.push_back(Node(static_cast<char>(c)));
+            }
+
+            // add dummy nodes for the metacodes
+            vn.push_back(Node('\x00')); //  MetaCode_EOF
         }
-    }
-}
 
-int64_t cborio::HuffmanCompress(const uint8_t *iter_src, int64_t len, uint8_t *iter_dst)
-{
-    uint8_t *out_start = iter_dst;
-    int64_t chunk_size = 1 << 18;
-    // necessary for int64?
-    for (int64_t start = 0; start < len; start += chunk_size)
-    {
-        int64_t remaining = std::min(chunk_size, len - start);
-        uint8_t *marker = iter_dst;
-        iter_dst += 3;
-
-        cborio::HuffmanEncoder encoder(iter_dst);
-        for (int64_t i = 0; i < remaining; ++i)
+        CodeType search_and_insert(CodeType i, char c)
         {
-            encoder.scan(iter_src[i]);
+            if (i == dms)
+            {
+                return search_initials(c);
+            }
+
+            const CodeType vn_size = static_cast<uint32_t>(vn.size());
+            CodeType ci{vn[i].first}; // Current Index
+
+            if (ci != dms)
+            {
+                while (true)
+                {
+                    if (c < vn[ci].c)
+                    {
+                        if (vn[ci].left == dms)
+                        {
+                            vn[ci].left = vn_size;
+                            break;
+                        }
+                        else
+                        {
+                            ci = vn[ci].left;
+                        }
+                    }
+                    else if (c > vn[ci].c)
+                    {
+                        if (vn[ci].right == dms)
+                        {
+                            vn[ci].right = vn_size;
+                            break;
+                        }
+                        else
+                        {
+                            ci = vn[ci].right;
+                        }
+                    }
+                    else
+                    {
+                        return ci;
+                    }
+                }
+            }
+            else
+            {
+                vn[i].first = vn_size;
+            }
+
+            vn.push_back(Node(c));
+            return dms;
         }
-        encoder.buildTable();
-        for (int64_t i = 0; i < remaining; ++i)
+
+        CodeType search_initials(char c) const
         {
-            encoder.encode(iter_src[i]);
+            return initials[static_cast<unsigned char>(c)];
         }
-        int64_t chunk_written = encoder.finish();
-        marker[0] = chunk_written & 0xff;
-        marker[1] = (chunk_written >> 8) & 0xff;
-        marker[2] = (chunk_written >> 16) & 0xff;
 
-        iter_src += remaining;
-        iter_dst += chunk_written;
-    }
-    return iter_dst - out_start;
-}
+        std::vector<Node>::size_type size() const
+        {
+            return vn.size();
+        }
 
-void cborio::HuffmanDecompress(uint8_t *iter_src, int64_t len, uint8_t *iter_dst, int64_t out_len)
-{
-    int64_t chunk_size = kMaxChunkSize;
-    uint8_t *buf_end = iter_src + len;
-    while (iter_src < buf_end)
+    private:
+        std::vector<Node> vn;
+        std::array<CodeType, 1u << CHAR_BIT> initials;
+    };
+
+    struct ByteCache
     {
-        int compressed_size = iter_src[0] | (iter_src[1] << 8) | (iter_src[2] << 16);
-        iter_src += 3;
 
-        HuffmanDecoder decoder(iter_src, iter_src + compressed_size);
-        decoder.readTable();
-        decoder.decode(iter_dst, iter_dst + std::min(chunk_size, out_len));
+        ByteCache() : used(0), data(0x00)
+        {
+        }
 
-        iter_src += compressed_size;
-        iter_dst += chunk_size;
-        out_len -= chunk_size;
+        std::size_t used;   ///< Bits currently in use.
+        unsigned char data; ///< The bits of the cached byte.
+    };
+
+    class CodeWriter
+    {
+    public:
+        explicit CodeWriter(std::ostream &os) : os(os), bits(CHAR_BIT + 1)
+        {
+        }
+
+        ~CodeWriter()
+        {
+            write(static_cast<CodeType>(MetaCode_EOF));
+
+            // write the incomplete leftover byte as-is
+            if (lo.used != 0)
+            {
+                os.put(static_cast<char>(lo.data));
+            }
+        }
+
+        std::size_t get_bits() const
+        {
+            return bits;
+        }
+
+        void reset_bits()
+        {
+            bits = CHAR_BIT + 1;
+        }
+
+        void increase_bits()
+        {
+            ++bits;
+        }
+
+        bool write(CodeType k)
+        {
+            std::size_t remaining_bits{bits};
+
+            if (lo.used != 0)
+            {
+                lo.data |= k << lo.used;
+                os.put(static_cast<char>(lo.data));
+                k >>= CHAR_BIT - lo.used;
+                remaining_bits -= CHAR_BIT - lo.used;
+                lo.used = 0;
+                lo.data = 0x00;
+            }
+
+            while (remaining_bits != 0)
+            {
+                if (remaining_bits >= CHAR_BIT)
+                {
+                    os.put(static_cast<char>(k));
+                    k >>= CHAR_BIT;
+                    remaining_bits -= CHAR_BIT;
+                }
+                else
+                {
+                    lo.used = remaining_bits;
+                    lo.data = static_cast<unsigned char>(k);
+                    break;
+                }
+            }
+
+            return os.good();
+        }
+
+    private:
+        std::ostream &os; ///< Output Stream.
+        std::size_t bits; ///< Binary width of codes.
+        ByteCache lo;     ///< LeftOvers.
+    };
+
+    class CodeReader
+    {
+    public:
+        explicit CodeReader(std::istream &is) : is(is), bits(CHAR_BIT + 1), feofmc(false)
+        {
+        }
+
+        std::size_t get_bits() const
+        {
+            return bits;
+        }
+        void reset_bits()
+        {
+            bits = CHAR_BIT + 1;
+        }
+
+        void increase_bits()
+        {
+            ++bits;
+        }
+
+        bool read(CodeType &k)
+        {
+            // ready-made bit masks
+            static const std::array<unsigned long int, 9> masks{
+                {0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF}};
+
+            std::size_t remaining_bits{bits};
+            std::size_t offset{lo.used};
+            unsigned char temp;
+
+            k = lo.data;
+            remaining_bits -= lo.used;
+            lo.used = 0;
+            lo.data = 0x00;
+
+            while (remaining_bits != 0 && is.get(reinterpret_cast<char &>(temp)))
+            {
+                if (remaining_bits >= CHAR_BIT)
+                {
+                    k |= static_cast<CodeType>(temp) << offset;
+                    offset += CHAR_BIT;
+                    remaining_bits -= CHAR_BIT;
+                }
+                else
+                {
+                    k |= static_cast<CodeType>(temp & masks[remaining_bits]) << offset;
+                    lo.used = CHAR_BIT - remaining_bits;
+                    lo.data = temp >> remaining_bits;
+                    break;
+                }
+            }
+
+            if (k == static_cast<CodeType>(MetaCode_EOF))
+            {
+                feofmc = true;
+                return false;
+            }
+
+            return is.good();
+        }
+
+        bool corrupted() const
+        {
+            return !feofmc;
+        }
+
+    private:
+        std::istream &is; ///< Input Stream.
+        std::size_t bits; ///< Binary width of codes.
+        bool feofmc;      ///< Found End-Of-File MetaCode.
+        ByteCache lo;     ///< LeftOvers.
+    };
+
+    std::size_t RequiredBits(size_t n)
+    {
+        std::size_t r{1};
+
+        while ((n >>= 1) != 0)
+        {
+            ++r;
+        }
+
+        return r;
     }
+
+    void compress(std::istream &is, std::ostream &os)
+    {
+        EncoderDictionary ed;
+        CodeWriter cw(os);
+        CodeType i{dms}; // Index
+        char c;
+        bool rbwf{false}; // Reset Bit Width Flag
+        char cbuf[ReadBufSize] = {0};
+
+        do
+        {
+            is.read(cbuf, ReadBufSize);
+            for (auto j = 0; j < is.gcount(); ++j)
+            {
+                c = cbuf[j];
+                // dictionary's maximum size was reached
+                if (ed.size() == dms)
+                {
+                    ed.reset();
+                    rbwf = true;
+                }
+
+                const CodeType temp{i};
+
+                if ((i = ed.search_and_insert(temp, c)) == dms)
+                {
+                    cw.write(temp);
+                    i = ed.search_initials(c);
+
+                    if (RequiredBits(ed.size() - 1) > cw.get_bits())
+                    {
+                        cw.increase_bits();
+                    }
+                }
+
+                if (rbwf)
+                {
+                    cw.reset_bits();
+                    rbwf = false;
+                }
+            }
+        } while (is.good());
+        if (i != dms)
+        {
+            cw.write(i);
+        }
+    }
+
+    void decompress(std::istream &is, std::ostream &os)
+    {
+        std::vector<std::pair<CodeType, char>> dictionary;
+
+        // "named" lambda function, used to reset the dictionary to its initial contents
+        const auto reset_dictionary = [&dictionary]
+        {
+            dictionary.clear();
+            dictionary.reserve(dms);
+
+            const int minc = std::numeric_limits<char>::min();
+            const int maxc = std::numeric_limits<char>::max();
+
+            for (auto c = minc; c <= maxc; ++c)
+            {
+                dictionary.push_back({dms, static_cast<char>(c)});
+            }
+
+            // add dummy elements for the metacodes
+            dictionary.push_back({0, '\x00'}); //  MetaCode_EOF
+        };
+
+        const auto rebuild_string = [&dictionary](CodeType k) -> const std::vector<char> *
+        {
+            static std::vector<char> s; // String
+
+            s.clear();
+
+            // the length of a string cannot exceed the dictionary's number of entries
+            s.reserve(dms);
+
+            while (k != dms)
+            {
+                s.push_back(dictionary[k].second);
+                k = dictionary[k].first;
+            }
+
+            std::reverse(s.begin(), s.end());
+            return &s;
+        };
+
+        reset_dictionary();
+
+        CodeReader cr(is);
+        CodeType i{dms}; // Index
+        CodeType k;      // Key
+
+        while (true)
+        {
+            // dictionary's maximum size was reached
+            if (dictionary.size() == dms)
+            {
+                reset_dictionary();
+                cr.reset_bits();
+            }
+
+            if (RequiredBits(dictionary.size()) > cr.get_bits())
+            {
+                cr.increase_bits();
+            }
+
+            if (!cr.read(k))
+            {
+                break;
+            }
+
+            if (k > dictionary.size())
+            {
+                throw std::runtime_error("invalid compressed code");
+            }
+
+            const std::vector<char> *s; // String
+
+            if (k == dictionary.size())
+            {
+                dictionary.push_back({i, rebuild_string(i)->front()});
+                s = rebuild_string(k);
+            }
+            else
+            {
+                s = rebuild_string(k);
+
+                if (i != dms)
+                    dictionary.push_back({i, s->front()});
+            }
+
+            os.write(&s->front(), s->size());
+            i = k;
+        }
+
+        if (cr.corrupted())
+        {
+            throw std::runtime_error("corrupted compressed file");
+        }
+    }
+
 }
