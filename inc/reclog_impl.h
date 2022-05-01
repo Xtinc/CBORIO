@@ -10,13 +10,13 @@
 #include <thread>
 #include <mutex>
 
-namespace details
+namespace
 {
     constexpr int REC_THREADNAME_WIDTH = 8;
     constexpr int REC_FILENAME_WIDTH = 23;
     constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
-    constexpr unsigned long REC_MAX_FILESIZE = 102400;
     constexpr int REC_MAX_FILENUM = 64;
+    constexpr size_t REC_MAX_FILESIZE = 102400;
 
     inline const char *filename(const char *path)
     {

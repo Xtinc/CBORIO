@@ -48,7 +48,7 @@ class RECLOG_TestCase : public ::testing::Test
 public:
     RECLOG_TestCase()
     {
-        RECLOG::INIT_REC();
+        RECLOG::RECONFIG::InitREC();
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -60,7 +60,7 @@ class RECFILE_TestCase : public ::testing::Test
 public:
     RECFILE_TestCase()
     {
-        RECLOG::INIT_REC("st.cbor");
+        RECLOG::RECONFIG::InitREC("st.cbor");
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -75,7 +75,7 @@ class RECRAW_TestCase : public ::testing::Test
 public:
     RECRAW_TestCase()
     {
-        RECLOG::INIT_REC("st.cbor");
+        RECLOG::RECONFIG::InitREC("st.cbor");
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -127,7 +127,7 @@ TEST_F(RECLOG_TestCase, sio_time)
     for (int i = 0; i < 100; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        details::print_date_time(details::get_date_time(), td, 50);
+        print_date_time(get_date_time(), td, 50);
         RECLOG(log) << td[i];
     }
 
@@ -137,7 +137,7 @@ TEST_F(RECLOG_TestCase, sio_time)
 TEST_F(RECLOG_TestCase, sio_thread)
 {
     char *td = new char[50];
-    details::print_thread_name(details::get_thread_name(), td, 50);
+    print_thread_name(get_thread_name(), td, 50);
     RECLOG(log) << td;
     delete[] td;
 }

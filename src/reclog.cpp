@@ -15,9 +15,8 @@ std::string RECLOG::RECONFIG::filename = "";
 int RECLOG::RECONFIG::cnt = 0;
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
 
-std::once_flag rec_init_flag;
-std::once_flag rec_exit_flag;
-std::once_flag rec_file_flag[details::REC_MAX_FILENUM];
+std::once_flag RECInitFlag;
+std::once_flag RECFileFlag[REC_MAX_FILENUM];
 
 class FileDisk : public RECLOG::FileBase
 {
@@ -26,6 +25,7 @@ public:
     {
         m_fp = fopen(filename.c_str(), "wb");
     };
+
     ~FileDisk()
     {
         if (m_fp != nullptr)
@@ -42,23 +42,6 @@ public:
 private:
     FILE *m_fp;
 };
-
-void GenerateNewFile(RECLOG::FilePtr &fp)
-{
-    RECLOG::RECONFIG::filesize = 0;
-    ++RECLOG::RECONFIG::cnt;
-    fp.reset(new FileDisk(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)));
-}
-
-RECLOG::FilePtr RECLOG::RECONFIG::GetCurFileFp()
-{
-    if (RECLOG::RECONFIG::cnt < details::REC_MAX_FILENUM &&
-        RECLOG::RECONFIG::filesize > details::REC_MAX_FILESIZE)
-    {
-        std::call_once(rec_file_flag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
-    }
-    return RECLOG::RECONFIG::g_fp;
-}
 
 #if __GNUC__
 std::recursive_mutex s_mutex;
@@ -238,7 +221,7 @@ void install_signal_handlers()
 }
 #endif
 
-inline void init_impl(const char *filename)
+void InitIMPL(const char *filename, RECLOG::FilePtr &fp)
 {
 #if __GNUC__
     install_signal_handlers();
@@ -246,36 +229,53 @@ inline void init_impl(const char *filename)
     if (strlen(filename) != 0)
     {
         RECLOG::RECONFIG::filename = std::string(filename);
-        RECLOG::RECONFIG::g_fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename);
+        fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename);
     }
     else
     {
-        RECLOG::RECONFIG::start_time = details::get_date_time();
-        details::print_header();
+        RECLOG::RECONFIG::start_time = get_date_time();
+        print_header();
     }
 }
 
-void RECLOG::INIT_REC(const char *filename)
+void GenerateNewFile(RECLOG::FilePtr &fp)
 {
-    std::call_once(rec_init_flag, init_impl, filename);
+    RECLOG::RECONFIG::filesize = 0;
+    ++RECLOG::RECONFIG::cnt;
+    fp.reset(new FileDisk(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)));
 }
 
-RECLOG::reclogger_raw::~reclogger_raw()
+RECLOG::FilePtr RECLOG::RECONFIG::GetCurFileFp()
+{
+    if (RECLOG::RECONFIG::cnt < REC_MAX_FILENUM &&
+        RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
+    {
+        std::call_once(RECFileFlag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
+    }
+    return RECLOG::RECONFIG::g_fp;
+}
+
+void RECLOG::RECONFIG::InitREC(const char *RootName)
+{
+    std::call_once(RECInitFlag, InitIMPL, RootName, std::ref(RECLOG::RECONFIG::g_fp));
+}
+
+RECLOG::RecLogger_raw::~RecLogger_raw()
 {
     auto bytes_writed = m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
     RECLOG::RECONFIG::filesize += bytes_writed;
 }
 
-RECLOG::reclogger_file::~reclogger_file()
+RECLOG::RecLogger_file::~RecLogger_file()
 {
-    en << details::get_date_time() << details::get_thread_name();
+    en << get_date_time() << get_thread_name();
     auto bytes_writed = m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
     RECLOG::RECONFIG::filesize += bytes_writed;
 }
 
-RECLOG::reclogger_log::~reclogger_log()
+RECLOG::RecLogger_log::~RecLogger_log()
 {
-    char preamble_buffer[details::REC_PREAMBLE_WIDTH];
-    details::print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
+    char preamble_buffer[REC_PREAMBLE_WIDTH];
+    print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
     printf("%s%s\n", preamble_buffer, m_ss.str().c_str());
 }
