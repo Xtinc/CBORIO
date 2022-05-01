@@ -29,7 +29,7 @@ add_library(${CMAKE_PROJECT_NAME} ${SRCLISTS})
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC inc)
 if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC CBOR REFL dl)
-elseif()
+else()
     target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC CBOR REFL)
 endif()
 
