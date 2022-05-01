@@ -15,7 +15,7 @@ std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename{""};
 int RECLOG::RECONFIG::cnt{0};
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
-FunctionPool RECLOG::RECONFIG::g_funcpool(1);
+FunctionPool RECLOG::RECONFIG::g_funcpool{};
 
 std::once_flag RECInitFlag;
 std::once_flag RECFileFlag[REC_MAX_FILENUM];
@@ -38,10 +38,10 @@ public:
                 RECLOG::RECONFIG::g_funcpool.post(
                     [](std::string str)
                     {
-                    RECLOG(log) << "start compress: " << str;
-                    std::ifstream ifs(str);
-                    std::ofstream ofs(str+".cpr");
-                    cborio::compress(ifs,ofs); },
+                        std::ifstream ifs(str);
+                        std::ofstream ofs(str + ".cpr");
+                        cborio::compress(ifs, ofs);
+                    },
                     m_filename);
             };
         }
@@ -166,7 +166,6 @@ void signal_handler(int signal_number, siginfo_t *, void *)
         signal_name = "UNKNOWN SIGNAL";
     }
 
-    printf("\n");
     printf("REC caught a signal: ");
     printf("%s", signal_name);
     printf("\n");
@@ -174,24 +173,8 @@ void signal_handler(int signal_number, siginfo_t *, void *)
     // --------------------------------------------------------------------
     //      WARNING: FROM NOW ANY OPERATIONS IN USR SPACE IS NOT SAFE
     // --------------------------------------------------------------------
-
-    if (true)
-    {
-        flush();
-        try
-        {
-            RECLOG(log) << "Signal: " << signal_name;
-            RECLOG(log) << stacktrace_as_stdstring(0);
-        }
-        catch (...)
-        {
-            // This can happed due to s_fatal_handler.
-            printf("Exception caught and ignored by signal handler.\n");
-        }
-        flush();
-
-        // --------------------------------------------------------------------
-    }
+    printf("%s", stacktrace_as_stdstring(0).c_str());
+    flush();
 
     call_default_signal_handler(signal_number);
 }

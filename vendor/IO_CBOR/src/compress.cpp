@@ -1,5 +1,7 @@
 #include "encoder.h"
 #include <array>
+#include <algorithm>
+#include <climits>
 
 using CodeType = std::uint32_t;
 

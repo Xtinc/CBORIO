@@ -2,6 +2,7 @@
 #define SIMPLE_REFLECT_H
 #include "simple_macro.h"
 #include <utility>
+#include <cstring>
 
 // reference:
 // http://pfultz2.com/blog/2012/07/31/reflection-in-under-100-lines
