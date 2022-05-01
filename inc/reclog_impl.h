@@ -16,7 +16,7 @@ namespace
     constexpr int REC_FILENAME_WIDTH = 23;
     constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
     constexpr int REC_MAX_FILENUM = 64;
-    constexpr size_t REC_MAX_FILESIZE = 10000000;
+    constexpr size_t REC_MAX_FILESIZE = 1000000;
 
     inline const char *filename(const char *path)
     {

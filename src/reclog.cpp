@@ -1,5 +1,6 @@
 #include "reclog.h"
 #include "reclog_impl.h"
+#include <fstream>
 
 #if __GNUC__
 #include <cxxabi.h>   // for __cxa_demangle
@@ -11,9 +12,10 @@
 
 long long RECLOG::RECONFIG::start_time{0};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
-std::string RECLOG::RECONFIG::filename = "";
-int RECLOG::RECONFIG::cnt = 0;
+std::string RECLOG::RECONFIG::filename{""};
+int RECLOG::RECONFIG::cnt{0};
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
+FunctionPool RECLOG::RECONFIG::g_funcpool(1);
 
 std::once_flag RECInitFlag;
 std::once_flag RECFileFlag[REC_MAX_FILENUM];
@@ -23,6 +25,7 @@ class FileDisk : public RECLOG::FileBase
 public:
     FileDisk(const std::string &filename)
     {
+        m_filename = filename;
         m_fp = fopen(filename.c_str(), "wb");
     };
 
@@ -30,7 +33,17 @@ public:
     {
         if (m_fp != nullptr)
         {
-            fclose(m_fp);
+            if (fclose(m_fp) == 0)
+            {
+                RECLOG::RECONFIG::g_funcpool.post(
+                    [](std::string str)
+                    {
+                    RECLOG(log) << "start compress: " << str;
+                    std::ifstream ifs(str);
+                    std::ofstream ofs(str+".cpr");
+                    cborio::compress(ifs,ofs); },
+                    m_filename);
+            };
         }
     };
 
@@ -41,6 +54,7 @@ public:
 
 private:
     FILE *m_fp;
+    std::string m_filename;
 };
 
 #if __GNUC__
@@ -230,10 +244,10 @@ void InitIMPL(const char *filename, RECLOG::FilePtr &fp)
     {
         RECLOG::RECONFIG::filename = std::string(filename);
         fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename);
+        RECLOG::RECONFIG::start_time = get_date_time();
     }
     else
     {
-        RECLOG::RECONFIG::start_time = get_date_time();
         print_header();
     }
 }

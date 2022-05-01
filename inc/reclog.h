@@ -3,7 +3,9 @@
 
 #include "simple_reflect.h"
 #include "encoder.h"
+#include "thread_pool.h"
 #include <atomic>
+#include <thread>
 #include <memory>
 
 #define RECVLOG_S(fulltype) RECLOG::make_RecLogger<fulltype>(__FILE__, __LINE__)
@@ -33,6 +35,7 @@ namespace RECLOG
         static std::atomic_size_t filesize;
         static std::string filename;
         static int cnt;
+        static FunctionPool g_funcpool;
         static FilePtr GetCurFileFp();
         static void InitREC(const char *filename = "");
 
