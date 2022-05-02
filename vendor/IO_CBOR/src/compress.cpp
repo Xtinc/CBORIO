@@ -13,7 +13,7 @@ class EncoderDictionary
 {
     struct Node
     {
-        explicit Node(char c) : first(dms), c(c), left(dms), right(dms)
+        explicit Node(char c) : c(c), first(dms), left(dms), right(dms)
         {
         }
 

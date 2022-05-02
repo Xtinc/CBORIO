@@ -78,19 +78,6 @@ int checkBytes(uint8_t *buf, uint8_t *actual, int64_t len)
     return bad;
 }
 
-std::unique_ptr<uint8_t> readhfile(const char *filename, int64_t &len)
-{
-    FILE *f = fopen(filename, "r");
-    fseek(f, 0, SEEK_END);
-    len = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    std::unique_ptr<uint8_t> buf;
-    buf.reset(new uint8_t[len]);
-    fread(buf.get(), 1, len, f);
-    return buf;
-}
-
 template <typename T>
 void generate_rd(std::vector<T> &ar)
 {
