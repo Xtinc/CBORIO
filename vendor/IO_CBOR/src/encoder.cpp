@@ -33,7 +33,7 @@ namespace cborio
         return;
     }
 
-    void encoder::write_type_value(int major_type, unsigned long long value)
+    void encoder::write_type_value(int major_type, uint64_t value)
     {
         major_type <<= 5;
         if (value <= 0x17)

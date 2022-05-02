@@ -126,66 +126,11 @@ namespace cborio
     };
 
     template <typename T>
-    struct is_unsigned : public std::false_type
-    {
-    };
-    template <>
-    struct is_unsigned<unsigned short> : public std::true_type
-    {
-    };
-    template <>
-    struct is_unsigned<unsigned int> : public std::true_type
-    {
-    };
-    template <>
-    struct is_unsigned<unsigned long> : public std::true_type
-    {
-    };
-    template <>
-    struct is_unsigned<unsigned long long> : public std::true_type
-    {
-    };
-
-    template <typename T>
-    struct is_signed : public std::false_type
-    {
-    };
-    template <>
-    struct is_signed<short> : public std::true_type
-    {
-    };
-    template <>
-    struct is_signed<int> : public std::true_type
-    {
-    };
-    template <>
-    struct is_signed<long> : public std::true_type
-    {
-    };
-    template <>
-    struct is_signed<long long> : public std::true_type
-    {
-    };
-
-    template <typename T>
     struct is_boolean : public std::false_type
     {
     };
     template <>
     struct is_boolean<bool> : public std::true_type
-    {
-    };
-
-    template <typename T>
-    struct is_char : public std::false_type
-    {
-    };
-    template <>
-    struct is_char<char> : public std::true_type
-    {
-    };
-    template <>
-    struct is_char<unsigned char> : public std::true_type
     {
     };
 

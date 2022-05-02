@@ -81,7 +81,7 @@ namespace cborio
         DECODER_STATUS m_status;
         int m_curlen;
 
-        template <typename RT, typename std::enable_if<is_unsigned<RT>::value>::type * = nullptr>
+        template <typename RT, typename std::enable_if<std::is_integral<RT>::value>::type * = nullptr>
         RT get_data() { return RT(); }
         template <typename RT, typename std::enable_if<std::is_floating_point<RT>::value>::type * = nullptr>
         RT get_data() { return RT(); }

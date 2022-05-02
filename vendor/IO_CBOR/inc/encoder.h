@@ -32,31 +32,30 @@ namespace cborio
             write_data(t);
             return *this;
         }
-        template <typename T, typename std::enable_if<is_charptr<typename std::decay<T>::type>::value>::type * = nullptr>
-        void write_data(const T &t)
-        {
-            return write_data(t, strlen(t));
-        }
-        template <typename T, typename std::enable_if<is_signed<T>::value || is_unsigned<T>::value>::type * = nullptr>
-        void write_data(const T &t)
-        {
-            return t < 0 ? write_type_value(1, static_cast<unsigned long long>(-t - 1)) : write_type_value(0, static_cast<unsigned long long>(t));
-        }
-        template <typename T, typename std::enable_if<is_boolean<T>::value>::type * = nullptr>
-        void write_data(const T &t)
+
+        void write_data(const bool &t)
         {
             return write_bool_value(t);
         }
-        template <typename T, typename std::enable_if<is_char<T>::value>::type * = nullptr>
+
+        template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
         void write_data(const T &t)
         {
-            return write_data(&t, 1);
+            return t < 0 ? write_type_value(1, static_cast<uint64_t>(-t - 1)) : write_type_value(0, static_cast<uint64_t>(t));
         }
+
         template <typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
         void write_data(const T &t)
         {
             return write_float_value(t);
         }
+
+        template <typename T, typename std::enable_if<is_charptr<typename std::decay<T>::type>::value>::type * = nullptr>
+        void write_data(const T &t)
+        {
+            return write_data(t, strlen(t));
+        }
+
         template <typename T, typename std::enable_if<ISTList<T>::value>::type * = nullptr>
         void write_data(const T &t)
         {
@@ -67,11 +66,13 @@ namespace cborio
             }
             return;
         }
+
         template <typename T, typename std::enable_if<ISTRing<T>::value>::type * = nullptr>
         void write_data(const T &t)
         {
             write_data(t.c_str(), t.size());
         }
+
         template <typename T, typename std::enable_if<ISTLmap<T>::value>::type * = nullptr>
         void write_data(const T &t)
         {
@@ -82,6 +83,7 @@ namespace cborio
                 write_data(i.second);
             }
         }
+
         template <typename T, typename std::enable_if<
                                   !std::is_fundamental<T>::value &&
                                   IsOverloadedOperator<T>::value &&
@@ -95,6 +97,7 @@ namespace cborio
             ss << t;
             return write_data(ss.str());
         }
+        
         template <typename T, typename T2,
                   typename std::enable_if<std::is_integral<T2>::value>::type * = nullptr>
         void write_data(const T &t, T2 s)
@@ -129,7 +132,7 @@ namespace cborio
     };
 
     void compress(std::istream &is, std::ostream &os);
-    
+
     void decompress(std::istream &is, std::ostream &os);
 }
 

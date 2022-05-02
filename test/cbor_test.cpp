@@ -126,7 +126,7 @@ TEST_F(CBOR_O_TestCase, byte_array)
     {
         en.write_data(i);
     }
-    EXPECT_STREQ(ios.cstr(), "418041814182418341ff");
+    EXPECT_STREQ(ios.cstr(), "188018811882188318ff");
 }
 
 TEST_F(CBOR_O_TestCase, char_array)
@@ -159,7 +159,7 @@ TEST_F(CBOR_O_TestCase, stl_list)
     // 0x844161416241634164
     EXPECT_STREQ(ios.cstr(), "85010203040583fb4014395810624dd3fb4014395810624dd3fb4014395810624dd3"
                              "84646365686967333238343664656871756575646276666c255e34353234332a2a262"
-                             "f6e844161416241634164");
+                             "f6e841861186218631864");
 }
 
 TEST_F(CBOR_O_TestCase, stl_map)
