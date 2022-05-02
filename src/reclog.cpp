@@ -127,12 +127,6 @@ void call_default_signal_handler(int signal_number)
     // kill only emit signal not kill the program.
 }
 
-void flush()
-{
-    std::lock_guard<std::recursive_mutex> lock(s_mutex);
-    fflush(stdout);
-}
-
 void signal_handler(int signal_number, siginfo_t *, void *)
 {
     const char *signal_name = "UNKNOWN SIGNAL";
@@ -169,16 +163,17 @@ void signal_handler(int signal_number, siginfo_t *, void *)
     {
         signal_name = "UNKNOWN SIGNAL";
     }
-
-    printf("REC caught a signal: ");
-    printf("%s", signal_name);
-    printf("\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "REC caught a signal: ");
+    fprintf(stderr, "%s", signal_name);
+    fprintf(stderr, "\n");
 
     // --------------------------------------------------------------------
     //      WARNING: FROM NOW ANY OPERATIONS IN USR SPACE IS NOT SAFE
     // --------------------------------------------------------------------
-    printf("%s", stacktrace_as_stdstring(0).c_str());
-    flush();
+    auto backtrace_contents = stacktrace_as_stdstring(0).c_str();
+    fprintf(stderr, "%s", backtrace_contents);
+    RECLOG(file) << backtrace_contents;
 
     call_default_signal_handler(signal_number);
 }
