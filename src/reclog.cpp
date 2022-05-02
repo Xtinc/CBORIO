@@ -233,12 +233,12 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp)
 #if __GNUC__
     install_signal_handlers();
 #endif
+    RECLOG::RECONFIG::start_time = get_date_time();
     if (strlen(filename) != 0)
     {
         RECLOG::RECONFIG::filesize = 0;
         RECLOG::RECONFIG::filename = std::string(filename);
         RECLOG::RECONFIG::g_compress = Compressed;
-        RECLOG::RECONFIG::start_time = get_date_time();
         fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt));
     }
     else
