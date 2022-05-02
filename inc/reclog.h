@@ -178,7 +178,7 @@ namespace RECLOG
         void serializeObj(const T &obj, const char *fieldName = "")
         {
             en << fieldName << '{';
-            refl::forEach(obj, fLambdaFile(*this));
+            refl::forEach(obj, RECLOG::fLambdaFile(*this));
             en << '}';
         }
     };
@@ -243,7 +243,7 @@ namespace RECLOG
         void serializeObj(const T &obj, const char *fieldName = "")
         {
             m_ss << fieldName << '{';
-            refl::forEach(obj, fLambdaLog(*this));
+            refl::forEach(obj, RECLOG::fLambdaLog(*this));
             m_ss << '}';
         }
     };

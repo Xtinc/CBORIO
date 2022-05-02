@@ -97,7 +97,7 @@ namespace cborio
             ss << t;
             return write_data(ss.str());
         }
-        
+
         template <typename T, typename T2,
                   typename std::enable_if<std::is_integral<T2>::value>::type * = nullptr>
         void write_data(const T &t, T2 s)

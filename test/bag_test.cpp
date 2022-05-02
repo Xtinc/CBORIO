@@ -202,7 +202,7 @@ TEST_F(RECLOG_TestCase, sio_speed_md)
 TEST_F(RECFILE_TestCase, fio_func)
 {
     TEST_CBOR tcb = {1, 8.9};
-    uint64_t ces = 887;
+    uint32_t ces = 887;
     test_encoder_stream_io tesi(1, 1, 2.5, "opeassds");
     Timer timer;
     for (int i = 0; i < 10000; ++i)

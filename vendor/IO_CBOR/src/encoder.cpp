@@ -76,7 +76,7 @@ namespace cborio
 
     void encoder::write_array_head(size_t size)
     {
-        write_type_value(4, static_cast<unsigned int>(size));
+        write_type_value(4, size);
     }
 
     void encoder::write_null()
@@ -86,17 +86,17 @@ namespace cborio
 
     void encoder::write_map(size_t size)
     {
-        write_type_value(5, static_cast<unsigned int>(size));
+        write_type_value(5, static_cast<uint64_t>(size));
     }
 
     void encoder::write_tag(const unsigned int tag)
     {
-        write_type_value(6, tag);
+        write_type_value(6, static_cast<uint64_t>(tag));
     }
 
     void encoder::write_special(int special)
     {
-        write_type_value(7, static_cast<unsigned int>(special));
+        write_type_value(7, static_cast<uint64_t>(special));
     }
 
     void encoder::write_undefined()
