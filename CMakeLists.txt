@@ -12,6 +12,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES MSVC)
     add_compile_options(/W4)
     add_compile_definitions(IS_MSVC_CXX_COMPILER)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
     #add_compile_definitions(MICROSOFT_WINDOWS_WINBASE_H_DEFINE_INTERLOCKED_CPLUSPLUS_OVERLOADS=0)
 endif()
 

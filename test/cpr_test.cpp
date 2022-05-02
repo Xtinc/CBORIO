@@ -27,8 +27,8 @@ TEST(Compress_TestCase, compress_str)
 TEST(Compress_TestCase, compress_file)
 {
     Timer timer;
-    std::ifstream ifs("../enwik8", std::ios_base::binary);
-    std::ofstream ofs("st.lzw", std::ios_base::binary);
+    std::ifstream ifs("st.cbor3", std::ios_base::binary);
+    std::ofstream ofs("st.cbot.cpr", std::ios_base::binary);
     cborio::compress(ifs, ofs);
     std::cout << timer.elapsed() / 1000.0 << std::endl;
 }

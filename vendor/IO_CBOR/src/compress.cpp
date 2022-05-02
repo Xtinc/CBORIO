@@ -6,7 +6,7 @@
 using CodeType = std::uint32_t;
 
 constexpr CodeType dms{1024 * 512};
-constexpr CodeType MetaCode_EOF = 0x00;
+constexpr CodeType MetaCode_EOF = 1u << CHAR_BIT;
 constexpr unsigned int ReadBufSize = 512;
 
 class EncoderDictionary

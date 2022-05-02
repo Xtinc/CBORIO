@@ -60,7 +60,7 @@ class RECFILE_TestCase : public ::testing::Test
 public:
     RECFILE_TestCase()
     {
-        RECLOG::RECONFIG::InitREC("st.cbor");
+        RECLOG::RECONFIG::InitREC("st.cbor", true);
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -75,7 +75,7 @@ class RECRAW_TestCase : public ::testing::Test
 public:
     RECRAW_TestCase()
     {
-        RECLOG::RECONFIG::InitREC("st.cbor");
+        RECLOG::RECONFIG::InitREC("st.raw");
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -269,5 +269,22 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     for (size_t i = 0; i < thdvec.size(); ++i)
     {
         thdvec[i].join();
+    }
+}
+
+TEST(RECDecoder_TestCase, decompress)
+{
+    std::ifstream ifs("st.cbor0.cpr", std::ios_base::binary);
+    std::ofstream ofs("st.cbor0", std::ios_base::binary);
+    cborio::decompress(ifs, ofs);
+    ifs.close();
+    ofs.close();
+    ro_disk_file roo("st.cbor0");
+    if (roo.is_open())
+    {
+        hd_debug hdb;
+        cborio::decoder de(roo, hdb);
+        de.run();
+        roo.close();
     }
 }

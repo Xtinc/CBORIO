@@ -14,6 +14,7 @@ long long RECLOG::RECONFIG::start_time{0};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename{""};
 int RECLOG::RECONFIG::cnt{0};
+bool RECLOG::RECONFIG::g_compress{false};
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
 FunctionPool RECLOG::RECONFIG::g_funcpool{};
 
@@ -33,14 +34,17 @@ public:
     {
         if (m_fp != nullptr)
         {
-            if (fclose(m_fp) == 0)
+            if (fclose(m_fp) == 0 && RECLOG::RECONFIG::g_compress)
             {
                 RECLOG::RECONFIG::g_funcpool.post(
                     [](std::string str)
                     {
-                        std::ifstream ifs(str);
-                        std::ofstream ofs(str + ".cpr");
+                        std::ifstream ifs(str, std::ios_base::binary);
+                        std::ofstream ofs(str + ".cpr", std::ios_base::binary);
                         cborio::compress(ifs, ofs);
+                        ifs.close();
+                        ofs.close();
+                        remove(str.c_str());
                     },
                     m_filename);
             };
@@ -218,7 +222,13 @@ void install_signal_handlers()
 }
 #endif
 
-void InitIMPL(const char *filename, RECLOG::FilePtr &fp)
+void ExitIMPL()
+{
+    RECLOG::RECONFIG::GetCurFileFp().reset();
+    RECLOG(log) << "atexit";
+}
+
+void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp)
 {
 #if __GNUC__
     install_signal_handlers();
@@ -226,13 +236,15 @@ void InitIMPL(const char *filename, RECLOG::FilePtr &fp)
     if (strlen(filename) != 0)
     {
         RECLOG::RECONFIG::filename = std::string(filename);
-        fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename);
+        RECLOG::RECONFIG::g_compress = Compressed;
         RECLOG::RECONFIG::start_time = get_date_time();
+        fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt));
     }
     else
     {
         print_header();
     }
+    atexit(ExitIMPL);
 }
 
 void GenerateNewFile(RECLOG::FilePtr &fp)
@@ -242,7 +254,7 @@ void GenerateNewFile(RECLOG::FilePtr &fp)
     fp.reset(new FileDisk(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)));
 }
 
-RECLOG::FilePtr RECLOG::RECONFIG::GetCurFileFp()
+RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
 {
     if (RECLOG::RECONFIG::cnt < REC_MAX_FILENUM &&
         RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
@@ -252,9 +264,9 @@ RECLOG::FilePtr RECLOG::RECONFIG::GetCurFileFp()
     return RECLOG::RECONFIG::g_fp;
 }
 
-void RECLOG::RECONFIG::InitREC(const char *RootName)
+void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
 {
-    std::call_once(RECInitFlag, InitIMPL, RootName, std::ref(RECLOG::RECONFIG::g_fp));
+    std::call_once(RECInitFlag, InitIMPL, RootName, Compressed, std::ref(RECLOG::RECONFIG::g_fp));
 }
 
 RECLOG::RecLogger_raw::~RecLogger_raw()

@@ -36,8 +36,9 @@ namespace RECLOG
         static std::string filename;
         static int cnt;
         static FunctionPool g_funcpool;
-        static FilePtr GetCurFileFp();
-        static void InitREC(const char *filename = "");
+        static bool g_compress;
+        static FilePtr& GetCurFileFp();
+        static void InitREC(const char *filename = "", bool compressed = false);
 
     private:
         static FilePtr g_fp;
