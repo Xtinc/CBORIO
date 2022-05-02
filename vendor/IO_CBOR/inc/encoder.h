@@ -122,7 +122,7 @@ namespace cborio
         void write_bool_value(bool value);
         void write_float_value(float value);
         void write_float_value(double value);
-        void write_type_value(int major_type, unsigned long long value);
+        void write_type_value(int major_type, uint64_t value);
         void write_array_head(size_t size);
         void write_null();
         void write_map(size_t size);
