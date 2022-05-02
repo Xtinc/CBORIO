@@ -5,7 +5,6 @@
 #include "encoder.h"
 #include "thread_pool.h"
 #include <atomic>
-#include <thread>
 #include <memory>
 
 #define RECVLOG_S(fulltype) RECLOG::make_RecLogger<fulltype>(__FILE__, __LINE__)

@@ -11,10 +11,10 @@
 #endif
 
 long long RECLOG::RECONFIG::start_time{0};
-std::atomic_size_t RECLOG::RECONFIG::filesize{0};
-std::string RECLOG::RECONFIG::filename{""};
 int RECLOG::RECONFIG::cnt{0};
 bool RECLOG::RECONFIG::g_compress{false};
+std::atomic_size_t RECLOG::RECONFIG::filesize{0};
+std::string RECLOG::RECONFIG::filename{""};
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
 FunctionPool RECLOG::RECONFIG::g_funcpool{};
 
@@ -235,6 +235,7 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp)
 #endif
     if (strlen(filename) != 0)
     {
+        RECLOG::RECONFIG::filesize = 0;
         RECLOG::RECONFIG::filename = std::string(filename);
         RECLOG::RECONFIG::g_compress = Compressed;
         RECLOG::RECONFIG::start_time = get_date_time();
