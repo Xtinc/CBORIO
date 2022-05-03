@@ -62,14 +62,10 @@ private:
 };
 
 #if __GNUC__
-std::recursive_mutex s_mutex;
 
-std::string stacktrace_as_stdstring(int skip)
+std::string stacktrace_as_stdstring(void **callstack, int num_frames, int skip)
 {
-    // From https://gist.github.com/fmela/591333
-    void *callstack[128];
-    const auto max_frames = sizeof(callstack) / sizeof(callstack[0]);
-    int num_frames = backtrace(callstack, max_frames);
+    const auto max_frames = 128;
     char **symbols = backtrace_symbols(callstack, num_frames);
 
     std::string result;
@@ -163,18 +159,29 @@ void signal_handler(int signal_number, siginfo_t *, void *)
     {
         signal_name = "UNKNOWN SIGNAL";
     }
-    fprintf(stderr, "\n");
-    fprintf(stderr, "REC caught a signal: ");
-    fprintf(stderr, "%s", signal_name);
-    fprintf(stderr, "\n");
 
     // --------------------------------------------------------------------
     //      WARNING: FROM NOW ANY OPERATIONS IN USR SPACE IS NOT SAFE
     // --------------------------------------------------------------------
-    auto backtrace_contents = stacktrace_as_stdstring(0).c_str();
-    fprintf(stderr, "%s", backtrace_contents);
-    RECLOG(file) << backtrace_contents;
 
+    void *callstack[128];
+    const auto max_frames = sizeof(callstack) / sizeof(callstack[0]);
+    int num_frames = backtrace(callstack, max_frames);
+    // guaranteed on most situations.
+    char err_file[32] = {0};
+    snprintf(err_file, 32, "%d.crash", getpid());
+    FILE *err_fd = fopen(err_file, "w");
+    backtrace_symbols_fd(callstack, num_frames, fileno(err_fd));
+    // guaranteed on most situations.
+    auto err_pretty_message = stacktrace_as_stdstring(callstack, num_frames, 0);
+    fprintf(err_fd, "%s", "********Readable MSGS:\n");
+    fprintf(err_fd, "%s", err_pretty_message.c_str());
+    // guaranteed on many situations.
+    RECLOG(log) << "REC caught a signal: " << signal_name << "\n"
+                << err_pretty_message;
+    // guaranteed on some situations.
+    fclose(err_fd);
+    // fprintf(stderr, "%s", stacktrace_as_stdstring(0).c_str());
     call_default_signal_handler(signal_number);
 }
 
@@ -232,7 +239,7 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp)
     if (strlen(filename) != 0)
     {
         RECLOG::RECONFIG::filesize = 0;
-        RECLOG::RECONFIG::filename = std::string(filename);
+        RECLOG::RECONFIG::filename = filename;
         RECLOG::RECONFIG::g_compress = Compressed;
         fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt));
     }

@@ -274,6 +274,7 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
 
 TEST(RECDecoder_TestCase, decompress)
 {
+    RECLOG::RECONFIG::InitREC("crash");
     std::ifstream ifs("st.cbor0.cpr", std::ios_base::binary);
     std::ofstream ofs("st.cbor0", std::ios_base::binary);
     cborio::decompress(ifs, ofs);
