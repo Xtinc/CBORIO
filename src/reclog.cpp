@@ -1,6 +1,7 @@
 #include "reclog.h"
 #include "reclog_impl.h"
 #include <fstream>
+#include <chrono>
 
 #if __GNUC__
 #include <cxxabi.h>   // for __cxa_demangle
@@ -16,10 +17,13 @@ bool RECLOG::RECONFIG::g_compress{false};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename{""};
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
-FunctionPool RECLOG::RECONFIG::g_funcpool{};
+RECLOG::FilePtr RECLOG::RECONFIG::g_net = std::make_shared<RECLOG::FileBase>();
+FunctionPool RECLOG::RECONFIG::g_copool(2);
+FunctionPool RECLOG::RECONFIG::g_expool(1);
 
 std::once_flag RECInitFlag;
 std::once_flag RECFileFlag[REC_MAX_FILENUM];
+std::mutex RECNetMutex;
 
 class FileDisk : public RECLOG::FileBase
 {
@@ -36,7 +40,7 @@ public:
         {
             if (fclose(m_fp) == 0 && RECLOG::RECONFIG::g_compress)
             {
-                RECLOG::RECONFIG::g_funcpool.post(
+                RECLOG::RECONFIG::g_copool.post(
                     [](std::string str)
                     {
                         std::ifstream ifs(str, std::ios_base::binary);
@@ -61,9 +65,46 @@ private:
     std::string m_filename;
 };
 
+class FileNet : public RECLOG::FileBase, public std::enable_shared_from_this<FileNet>
+{
+public:
+    FileNet(const std::string &IPAdresser)
+    {
+        m_IPAdresser = IPAdresser;
+        m_buf.reserve(4096);
+    };
+    ~FileNet() {}
+
+    size_t WriteData(const void *src, size_t ele_size, size_t len) override
+    {
+        std::vector<char> content;
+        for (size_t idx = 0; idx < ele_size * len; ++idx)
+        {
+            content.emplace_back(*((char *)(src) + idx));
+        }
+        // RECLOG(log) << content;
+        RECLOG::RECONFIG::g_expool.post([content, self = shared_from_this()]()
+                                        { 
+                                            for(auto &i:content){
+                                                self->m_buf.emplace_back(i);
+                                            }
+                                            if(self->m_buf.size()>100000){
+                                                self->m_buf.clear();
+                                                RECLOG(log)<<"send data!";
+                                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                                            } });
+        return 0;
+    }
+
+private:
+    std::string m_IPAdresser;
+    std::vector<char> m_buf;
+};
+
 #if __GNUC__
 
-std::string stacktrace_as_stdstring(void **callstack, int num_frames, int skip)
+std::string
+stacktrace_as_stdstring(void **callstack, int num_frames, int skip)
 {
     const auto max_frames = 128;
     char **symbols = backtrace_symbols(callstack, num_frames);
@@ -227,10 +268,10 @@ void install_signal_handlers()
 void ExitIMPL()
 {
     RECLOG::RECONFIG::GetCurFileFp().reset();
-    RECLOG(log) << "atexit";
+    // RECLOG(log) << "atexit";
 }
 
-void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp)
+void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp, RECLOG::FilePtr &net)
 {
 #if __GNUC__
     install_signal_handlers();
@@ -242,6 +283,7 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp)
         RECLOG::RECONFIG::filename = filename;
         RECLOG::RECONFIG::g_compress = Compressed;
         fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt));
+        net = std::make_shared<FileNet>("127.0.0.1");
     }
     else
     {
@@ -267,9 +309,15 @@ RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
     return RECLOG::RECONFIG::g_fp;
 }
 
+RECLOG::FilePtr &RECLOG::RECONFIG::GetCurNetFp()
+{
+    return RECLOG::RECONFIG::g_net;
+}
+
 void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
 {
-    std::call_once(RECInitFlag, InitIMPL, RootName, Compressed, std::ref(RECLOG::RECONFIG::g_fp));
+    std::call_once(RECInitFlag, InitIMPL, RootName, Compressed,
+                   std::ref(RECLOG::RECONFIG::g_fp), std::ref(RECLOG::RECONFIG::g_net));
 }
 
 RECLOG::RecLogger_raw::~RecLogger_raw()

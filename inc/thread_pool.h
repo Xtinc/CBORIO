@@ -18,9 +18,9 @@ private:
     bool m_terminated;
 
 public:
-    FunctionPool() : m_function_queue(), m_lock(), m_data_condition(), m_terminated(false)
+    FunctionPool(int workers = 1) : m_function_queue(), m_lock(), m_data_condition(), m_terminated(false)
     {
-        for (auto i = 0; i < 2; ++i)
+        for (auto i = 0; i < workers; ++i)
         {
             m_workers.push_back(std::thread(&FunctionPool::infinite_loop_func, this));
         }

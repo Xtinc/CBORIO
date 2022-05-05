@@ -34,18 +34,24 @@ namespace RECLOG
         static std::atomic_size_t filesize;
         static std::string filename;
         static int cnt;
-        static FunctionPool g_funcpool;
+        static FunctionPool g_copool;
+        static FunctionPool g_expool;
         static bool g_compress;
-        static FilePtr& GetCurFileFp();
+        static FilePtr &GetCurFileFp();
+        static FilePtr &GetCurNetFp();
         static void InitREC(const char *filename = "", bool compressed = false);
 
     private:
         static FilePtr g_fp;
+        static FilePtr g_net;
     };
 
     struct fLambdaFile;
     struct fLambdaLog;
 
+    class RecLogger_net
+    {
+    };
     class RecLogger_raw
     {
     private:
@@ -299,6 +305,13 @@ namespace RECLOG
     make_RecLogger(const char *file, unsigned line)
     {
         return RecLogger_log(0, file, line);
+    }
+
+    template <typename T>
+    typename std::enable_if<std::is_same<T, RecLogger_net>::value, RecLogger_raw>::type
+    make_RecLogger(const char *file, unsigned line)
+    {
+        return RecLogger_raw(RECONFIG::GetCurNetFp());
     }
 }
 
