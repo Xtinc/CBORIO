@@ -33,7 +33,7 @@ namespace RECLOG
         static long long start_time;
         static std::atomic_size_t filesize;
         static std::string filename;
-        static int cnt;
+        static std::atomic_int cnt;
         static FunctionPool g_copool;
         static FunctionPool g_expool;
         static bool g_compress;
@@ -52,6 +52,7 @@ namespace RECLOG
     class RecLogger_net
     {
     };
+
     class RecLogger_raw
     {
     private:
@@ -309,7 +310,7 @@ namespace RECLOG
 
     template <typename T>
     typename std::enable_if<std::is_same<T, RecLogger_net>::value, RecLogger_raw>::type
-    make_RecLogger(const char *file, unsigned line)
+    make_RecLogger(const char *, unsigned)
     {
         return RecLogger_raw(RECONFIG::GetCurNetFp());
     }

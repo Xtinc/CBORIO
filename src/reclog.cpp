@@ -12,7 +12,7 @@
 #endif
 
 long long RECLOG::RECONFIG::start_time{0};
-int RECLOG::RECONFIG::cnt{0};
+std::atomic_int RECLOG::RECONFIG::cnt{0};
 bool RECLOG::RECONFIG::g_compress{false};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
 std::string RECLOG::RECONFIG::filename{""};
@@ -57,7 +57,9 @@ public:
 
     size_t WriteData(const void *src, size_t ele_size, size_t len) override
     {
-        return m_fp == nullptr ? 0 : fwrite(src, ele_size, len, m_fp);
+        auto bytes_writed = m_fp == nullptr ? 0 : fwrite(src, ele_size, len, m_fp);
+        RECLOG::RECONFIG::filesize += bytes_writed;
+        return bytes_writed;
     }
 
 private:
@@ -294,18 +296,45 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp, RECLOG
 
 void GenerateNewFile(RECLOG::FilePtr &fp)
 {
-    RECLOG::RECONFIG::filesize = 0;
-    ++RECLOG::RECONFIG::cnt;
+    int old_value = RECLOG::RECONFIG::cnt.load();
+    int new_value = 0;
+    do
+    {
+        if (old_value < REC_MAX_FILENUM)
+        {
+            new_value = old_value + 1;
+        }
+        else
+        {
+            new_value = 0;
+        }
+
+    } while (!RECLOG::RECONFIG::cnt.compare_exchange_weak(old_value, new_value));
     fp.reset(new FileDisk(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)));
 }
 
 RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
 {
-    if (RECLOG::RECONFIG::cnt < REC_MAX_FILENUM &&
-        RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
+    size_t old_value = RECLOG::RECONFIG::filesize.load();
+    bool size_reset = false;
+    do
     {
-        std::call_once(RECFileFlag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
-    }
+        if (old_value < REC_MAX_FILESIZE)
+        {
+            break;
+        }
+        size_reset = RECLOG::RECONFIG::filesize.compare_exchange_weak(old_value, 0);
+        if (size_reset)
+        {
+            GenerateNewFile(RECLOG::RECONFIG::g_fp);
+        }
+    } while (!size_reset);
+    /*
+        if (RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
+        {
+            RECLOG::RECONFIG::filesize = 0;
+            std::call_once(RECFileFlag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
+        }*/
     return RECLOG::RECONFIG::g_fp;
 }
 
@@ -322,15 +351,15 @@ void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
 
 RECLOG::RecLogger_raw::~RecLogger_raw()
 {
-    auto bytes_writed = m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
-    RECLOG::RECONFIG::filesize += bytes_writed;
+    m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
+    // RECLOG::RECONFIG::filesize += bytes_writed;
 }
 
 RECLOG::RecLogger_file::~RecLogger_file()
 {
     en << get_date_time() << get_thread_name();
-    auto bytes_writed = m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
-    RECLOG::RECONFIG::filesize += bytes_writed;
+    m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
+    // RECLOG::RECONFIG::filesize += bytes_writed;
 }
 
 RECLOG::RecLogger_log::~RecLogger_log()
