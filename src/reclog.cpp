@@ -12,33 +12,36 @@
 #endif
 
 long long RECLOG::RECONFIG::start_time{0};
-std::atomic_int RECLOG::RECONFIG::cnt{0};
 bool RECLOG::RECONFIG::g_compress{false};
-std::atomic_size_t RECLOG::RECONFIG::filesize{0};
+std::atomic_size_t RECLOG::RECONFIG::filesize_cbor{0};
+std::atomic_size_t RECLOG::RECONFIG::filesize_raw{0};
 std::string RECLOG::RECONFIG::rootname{""};
-std::vector<std::string> RECLOG::RECONFIG::pathlist{};
-RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
-RECLOG::FilePtr RECLOG::RECONFIG::g_net = std::make_shared<RECLOG::FileBase>();
+RECLOG::FileQueue RECLOG::RECONFIG::filelist_cbor{};
+RECLOG::FileQueue RECLOG::RECONFIG::filelist_raw{};
 FunctionPool RECLOG::RECONFIG::g_copool(2);
 FunctionPool RECLOG::RECONFIG::g_expool(1);
 
 std::once_flag RECInitFlag;
-std::once_flag RECFileFlag[REC_MAX_FILENUM];
+std::once_flag RECRawInitFlag;
+std::once_flag RECBORInitFlag;
+// std::once_flag RECFileFlag[REC_MAX_FILENUM];
 
 class FileDisk : public RECLOG::FileBase
 {
 public:
     FileDisk(const std::string &filename)
     {
+        m_tempfile = true;
         m_filename = filename;
         m_fp = fopen(filename.c_str(), "wb");
     };
 
     ~FileDisk()
     {
-        if (m_fp != nullptr)
+        if (m_fp != nullptr && fclose(m_fp) == 0)
         {
-            if (fclose(m_fp) == 0 && RECLOG::RECONFIG::g_compress)
+            RECLOG(log) << "file delete!" << m_filename;
+            if (RECLOG::RECONFIG::g_compress)
             {
                 RECLOG::RECONFIG::g_copool.post(
                     [](std::string str)
@@ -51,18 +54,29 @@ public:
                         remove(str.c_str());
                     },
                     m_filename);
-            };
+            }
+            else
+            {
+                if (m_tempfile)
+                {
+                    remove(m_filename.c_str());
+                }
+            }
         }
     };
 
     size_t WriteData(const void *src, size_t ele_size, size_t len) override
     {
-        auto bytes_writed = m_fp == nullptr ? 0 : fwrite(src, ele_size, len, m_fp);
-        RECLOG::RECONFIG::filesize += bytes_writed;
-        return bytes_writed;
+        return m_fp == nullptr ? 0 : fwrite(src, ele_size, len, m_fp);
+    }
+
+    void SetTemp(bool temp) override
+    {
+        m_tempfile = temp;
     }
 
 private:
+    bool m_tempfile;
     FILE *m_fp;
     std::string m_filename;
 };
@@ -267,13 +281,7 @@ void install_signal_handlers()
 }
 #endif
 
-void ExitIMPL()
-{
-    RECLOG::RECONFIG::GetCurFileFp().reset();
-    // RECLOG(log) << "atexit";
-}
-
-void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp, RECLOG::FilePtr &net)
+void InitIMPL(const char *filename, bool Compressed)
 {
 #if __GNUC__
     install_signal_handlers();
@@ -281,43 +289,35 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp, RECLOG
     RECLOG::RECONFIG::start_time = get_date_time();
     if (strlen(filename) != 0)
     {
-        RECLOG::RECONFIG::filesize = 0;
         RECLOG::RECONFIG::g_compress = Compressed;
         RECLOG::RECONFIG::rootname = filename;
-        RECLOG::RECONFIG::pathlist.emplace_back(RECLOG::RECONFIG::rootname + print_date_time(get_date_time()));
-        fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::pathlist.at(RECLOG::RECONFIG::cnt));
-        net = std::make_shared<FileNet>("127.0.0.1");
     }
     else
     {
         print_header();
     }
-    atexit(ExitIMPL);
+    atexit(RECLOG::RECONFIG::ExitREC);
 }
 
-void GenerateNewFile(RECLOG::FilePtr &fp)
+void GenerateNewFile(RECLOG::FileQueue &flist, bool encoded)
 {
-    int old_value = RECLOG::RECONFIG::cnt.load();
-    int new_value = 0;
-    do
+    std::string filename = encoded ? ".cbor" : ".dat";
+    filename = RECLOG::RECONFIG::rootname + print_date_time(get_date_time()) + filename;
+    flist.push(std::move(std::make_shared<FileDisk>(filename)));
+    if (flist.size() > REC_MAX_FILENUM)
     {
-        if (old_value < REC_MAX_FILENUM)
-        {
-            new_value = old_value + 1;
-        }
-        else
-        {
-            new_value = 0;
-        }
-
-    } while (!RECLOG::RECONFIG::cnt.compare_exchange_weak(old_value, new_value));
-    RECLOG::RECONFIG::pathlist.emplace_back(RECLOG::RECONFIG::rootname + print_date_time(get_date_time()));
-    fp.reset(new FileDisk(RECLOG::RECONFIG::pathlist.at(RECLOG::RECONFIG::cnt)));
+        flist.pop();
+    }
 }
 
-RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
+RECLOG::FilePtr &RECLOG::RECONFIG::GetCurRawFp()
 {
-    size_t old_value = RECLOG::RECONFIG::filesize.load();
+    std::call_once(RECRawInitFlag, []()
+                   {
+        std::string filename = RECLOG::RECONFIG::rootname+print_date_time(get_date_time())+".dat";
+        RECLOG::RECONFIG::filelist_raw.push(std::move(std::make_shared<FileDisk>(filename))); });
+
+    size_t old_value = RECLOG::RECONFIG::filesize_raw.load();
     bool size_reset = false;
     do
     {
@@ -325,43 +325,70 @@ RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
         {
             break;
         }
-        size_reset = RECLOG::RECONFIG::filesize.compare_exchange_weak(old_value, 0);
+        size_reset = RECLOG::RECONFIG::filesize_raw.compare_exchange_weak(old_value, 0);
         if (size_reset)
         {
-            std::call_once(RECFileFlag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
+            GenerateNewFile(RECLOG::RECONFIG::filelist_raw, false);
         }
     } while (!size_reset);
-    /*
-        if (RECLOG::RECONFIG::filesize > REC_MAX_FILESIZE)
-        {
-            RECLOG::RECONFIG::filesize = 0;
-            std::call_once(RECFileFlag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
-        }*/
-    return RECLOG::RECONFIG::g_fp;
+    return RECLOG::RECONFIG::filelist_raw.back();
 }
 
-RECLOG::FilePtr &RECLOG::RECONFIG::GetCurNetFp()
+RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
 {
-    return RECLOG::RECONFIG::g_net;
+    std::call_once(RECBORInitFlag, []()
+                   {
+        std::string filename = RECLOG::RECONFIG::rootname+print_date_time(get_date_time())+".cbor";
+        RECLOG::RECONFIG::filelist_cbor.push(std::move(std::make_shared<FileDisk>(filename))); });
+    size_t old_value = RECLOG::RECONFIG::filesize_cbor.load();
+    bool size_reset = false;
+    do
+    {
+        if (old_value < REC_MAX_FILESIZE)
+        {
+            break;
+        }
+        size_reset = RECLOG::RECONFIG::filesize_cbor.compare_exchange_weak(old_value, 0);
+        if (size_reset)
+        {
+            GenerateNewFile(RECLOG::RECONFIG::filelist_cbor, true);
+        }
+    } while (!size_reset);
+    return RECLOG::RECONFIG::filelist_cbor.back();
 }
 
 void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
 {
-    std::call_once(RECInitFlag, InitIMPL, RootName, Compressed,
-                   std::ref(RECLOG::RECONFIG::g_fp), std::ref(RECLOG::RECONFIG::g_net));
+    std::call_once(RECInitFlag, InitIMPL, RootName, Compressed);
+}
+
+void RECLOG::RECONFIG::ExitREC()
+{
+    auto &queue = RECLOG::RECONFIG::filelist_cbor;
+    while (!queue.empty())
+    {
+        queue.front()->SetTemp(false);
+        queue.pop();
+    }
+    queue = RECLOG::RECONFIG::filelist_raw;
+    while (!queue.empty())
+    {
+        queue.front()->SetTemp(false);
+        queue.pop();
+    }
 }
 
 RECLOG::RecLogger_raw::~RecLogger_raw()
 {
-    m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
-    // RECLOG::RECONFIG::filesize += bytes_writed;
+    auto bytes_writed = m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
+    RECLOG::RECONFIG::filesize_raw += bytes_writed;
 }
 
 RECLOG::RecLogger_file::~RecLogger_file()
 {
     en << get_date_time() << get_thread_name();
-    m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
-    // RECLOG::RECONFIG::filesize += bytes_writed;
+    auto bytes_writed = m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
+    RECLOG::RECONFIG::filesize_cbor += bytes_writed;
 }
 
 RECLOG::RecLogger_log::~RecLogger_log()

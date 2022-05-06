@@ -60,7 +60,7 @@ class RECFILE_TestCase : public ::testing::Test
 public:
     RECFILE_TestCase()
     {
-        RECLOG::RECONFIG::InitREC("st.cbor", true);
+        RECLOG::RECONFIG::InitREC("st", true);
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -75,7 +75,7 @@ class RECRAW_TestCase : public ::testing::Test
 public:
     RECRAW_TestCase()
     {
-        RECLOG::RECONFIG::InitREC("st.raw");
+        RECLOG::RECONFIG::InitREC("st");
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -268,28 +268,6 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     }
 }
 
-TEST_F(RECRAW_TestCase, test_net)
-{
-    for (auto i = 0; i < 100; ++i)
-    {
-        RECLOG(net) << std::string("ceshi");
-    }
-}
-
-TEST_F(RECRAW_TestCase, test_net_md)
-{
-    std::vector<std::thread> thdvec;
-    for (size_t i = 0; i < 5; ++i)
-    {
-        thdvec.emplace_back([this]()
-                            { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                                               { RECLOG(net) << stw.num_b << stw.str_a; }); });
-    }
-    for (size_t i = 0; i < thdvec.size(); ++i)
-    {
-        thdvec[i].join();
-    }
-}
 
 TEST(RECDecoder_TestCase, decompress)
 {

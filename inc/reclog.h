@@ -6,7 +6,7 @@
 #include "thread_pool.h"
 #include <atomic>
 #include <memory>
-#include <vector>
+#include <queue>
 
 #define RECVLOG_S(fulltype) RECLOG::make_RecLogger<fulltype>(__FILE__, __LINE__)
 #define RECLOG(type) RECVLOG_S(RECLOG::RecLogger_##type)
@@ -18,6 +18,7 @@ namespace RECLOG
     public:
         FileBase(){};
         virtual ~FileBase(){};
+        virtual void SetTemp(bool){};
         virtual size_t WriteData(const void *, size_t, size_t)
         {
             return 0;
@@ -27,33 +28,30 @@ namespace RECLOG
     };
 
     using FilePtr = std::shared_ptr<FileBase>;
+    using FileQueue = std::queue<FilePtr>;
 
     class RECONFIG
     {
     public:
         static long long start_time;
-        static std::atomic_size_t filesize;
-        static std::vector<std::string> pathlist;
+        static std::atomic_size_t filesize_cbor;
+        static std::atomic_size_t filesize_raw;
         static std::string rootname;
-        static std::atomic_int cnt;
         static FunctionPool g_copool;
         static FunctionPool g_expool;
         static bool g_compress;
         static FilePtr &GetCurFileFp();
-        static FilePtr &GetCurNetFp();
+        static FilePtr &GetCurRawFp();
         static void InitREC(const char *filename = "", bool compressed = false);
+        static void ExitREC();
 
     private:
-        static FilePtr g_fp;
-        static FilePtr g_net;
+        static FileQueue filelist_cbor;
+        static FileQueue filelist_raw;
     };
 
     struct fLambdaFile;
     struct fLambdaLog;
-
-    class RecLogger_net
-    {
-    };
 
     class RecLogger_raw
     {
@@ -293,7 +291,7 @@ namespace RECLOG
     typename std::enable_if<std::is_same<T, RecLogger_raw>::value, RecLogger_raw>::type
     make_RecLogger(const char *, unsigned)
     {
-        return RecLogger_raw(RECONFIG::GetCurFileFp());
+        return RecLogger_raw(RECONFIG::GetCurRawFp());
     }
 
     template <typename T>
@@ -308,13 +306,6 @@ namespace RECLOG
     make_RecLogger(const char *file, unsigned line)
     {
         return RecLogger_log(0, file, line);
-    }
-
-    template <typename T>
-    typename std::enable_if<std::is_same<T, RecLogger_net>::value, RecLogger_raw>::type
-    make_RecLogger(const char *, unsigned)
-    {
-        return RecLogger_raw(RECONFIG::GetCurNetFp());
     }
 }
 
