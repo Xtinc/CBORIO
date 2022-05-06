@@ -40,7 +40,6 @@ public:
     {
         if (m_fp != nullptr && fclose(m_fp) == 0)
         {
-            RECLOG(log) << "file delete!" << m_filename;
             if (RECLOG::RECONFIG::g_compress)
             {
                 RECLOG::RECONFIG::g_copool.post(
