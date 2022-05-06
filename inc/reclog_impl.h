@@ -36,14 +36,16 @@ namespace
         return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     }
 
-    inline void print_date_time(long long ms_since_epoch, char *buff, size_t buff_size)
+    inline std::string print_date_time(long long ms_since_epoch)
     {
+        char buff[30] = {0};
         time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
         tm time_info;
         localtime_r(&sec_since_epoch, &time_info);
-        snprintf(buff, buff_size, "%04d%02d%02dT%02d%02d%02d.%03lld",
+        snprintf(buff, 30, "%04d%02d%02dT%02d%02d%02dS%03lld",
                  1900 + time_info.tm_year, 1 + time_info.tm_mon, time_info.tm_mday,
                  time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000);
+        return std::string(buff);
     }
 
     inline unsigned int get_thread_name()

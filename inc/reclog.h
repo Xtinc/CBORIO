@@ -6,6 +6,7 @@
 #include "thread_pool.h"
 #include <atomic>
 #include <memory>
+#include <vector>
 
 #define RECVLOG_S(fulltype) RECLOG::make_RecLogger<fulltype>(__FILE__, __LINE__)
 #define RECLOG(type) RECVLOG_S(RECLOG::RecLogger_##type)
@@ -32,7 +33,8 @@ namespace RECLOG
     public:
         static long long start_time;
         static std::atomic_size_t filesize;
-        static std::string filename;
+        static std::vector<std::string> pathlist;
+        static std::string rootname;
         static std::atomic_int cnt;
         static FunctionPool g_copool;
         static FunctionPool g_expool;

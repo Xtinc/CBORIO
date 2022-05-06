@@ -123,15 +123,11 @@ int main(int argc, char **argv)
 
 TEST_F(RECLOG_TestCase, sio_time)
 {
-    char *td = new char[50];
     for (int i = 0; i < 100; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        print_date_time(get_date_time(), td, 50);
-        RECLOG(log) << td[i];
+        RECLOG(log) << print_date_time(get_date_time());
     }
-
-    delete[] td;
 }
 
 TEST_F(RECLOG_TestCase, sio_thread)
