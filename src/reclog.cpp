@@ -15,7 +15,8 @@ long long RECLOG::RECONFIG::start_time{0};
 std::atomic_int RECLOG::RECONFIG::cnt{0};
 bool RECLOG::RECONFIG::g_compress{false};
 std::atomic_size_t RECLOG::RECONFIG::filesize{0};
-std::string RECLOG::RECONFIG::filename{""};
+std::string RECLOG::RECONFIG::rootname{""};
+std::vector<std::string> RECLOG::RECONFIG::pathlist{};
 RECLOG::FilePtr RECLOG::RECONFIG::g_fp = std::make_shared<RECLOG::FileBase>();
 RECLOG::FilePtr RECLOG::RECONFIG::g_net = std::make_shared<RECLOG::FileBase>();
 FunctionPool RECLOG::RECONFIG::g_copool(2);
@@ -23,7 +24,6 @@ FunctionPool RECLOG::RECONFIG::g_expool(1);
 
 std::once_flag RECInitFlag;
 std::once_flag RECFileFlag[REC_MAX_FILENUM];
-std::mutex RECNetMutex;
 
 class FileDisk : public RECLOG::FileBase
 {
@@ -282,9 +282,10 @@ void InitIMPL(const char *filename, bool Compressed, RECLOG::FilePtr &fp, RECLOG
     if (strlen(filename) != 0)
     {
         RECLOG::RECONFIG::filesize = 0;
-        RECLOG::RECONFIG::filename = filename;
         RECLOG::RECONFIG::g_compress = Compressed;
-        fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt));
+        RECLOG::RECONFIG::rootname = filename;
+        RECLOG::RECONFIG::pathlist.emplace_back(RECLOG::RECONFIG::rootname + print_date_time(get_date_time()));
+        fp = std::make_shared<FileDisk>(RECLOG::RECONFIG::pathlist.at(RECLOG::RECONFIG::cnt));
         net = std::make_shared<FileNet>("127.0.0.1");
     }
     else
@@ -310,7 +311,8 @@ void GenerateNewFile(RECLOG::FilePtr &fp)
         }
 
     } while (!RECLOG::RECONFIG::cnt.compare_exchange_weak(old_value, new_value));
-    fp.reset(new FileDisk(RECLOG::RECONFIG::filename + std::to_string(RECLOG::RECONFIG::cnt)));
+    RECLOG::RECONFIG::pathlist.emplace_back(RECLOG::RECONFIG::rootname + print_date_time(get_date_time()));
+    fp.reset(new FileDisk(RECLOG::RECONFIG::pathlist.at(RECLOG::RECONFIG::cnt)));
 }
 
 RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
@@ -326,7 +328,7 @@ RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
         size_reset = RECLOG::RECONFIG::filesize.compare_exchange_weak(old_value, 0);
         if (size_reset)
         {
-            GenerateNewFile(RECLOG::RECONFIG::g_fp);
+            std::call_once(RECFileFlag[RECLOG::RECONFIG::cnt], GenerateNewFile, std::ref(RECLOG::RECONFIG::g_fp));
         }
     } while (!size_reset);
     /*
