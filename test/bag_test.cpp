@@ -268,7 +268,7 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     }
 }
 
-
+/*
 TEST(RECDecoder_TestCase, decompress)
 {
     RECLOG::RECONFIG::InitREC("crash");
@@ -285,4 +285,4 @@ TEST(RECDecoder_TestCase, decompress)
         de.run();
         roo.close();
     }
-}
+}*/
