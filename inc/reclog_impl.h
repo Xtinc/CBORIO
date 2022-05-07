@@ -18,155 +18,182 @@ namespace
     constexpr int REC_MAX_FILENUM = 12;
     constexpr size_t REC_MAX_FILESIZE = 500000000;
 
-    inline const char *filename(const char *path)
+    inline std::string get_current_directory()
     {
-        for (auto ptr = path; *ptr; ++ptr)
+        char pwd[1024] = {0};
+#if _WIN32
+#define getcwd _getcwd
+#endif
+        getcwd(pwd, sizeof(pwd));
+        return pwd;
+    }
+
+    inline bool create_directories(const std::string &file_path_const)
+    {
+        const char *file_path = file_path_const.c_str();
+
+#ifdef _WIN32
+#define mkdir _mkdir
+#endif
+        return mkdir(file_path) == 0;
+    }
+
+    inline void delete_directories(const std::string &file_path_const)
+    {
+#if _WIN32
+#else
+#endif
+        }
+
+        inline const char *filename(const char *path)
         {
-            if (*ptr == '/' || *ptr == '\\')
+            for (auto ptr = path; *ptr; ++ptr)
             {
-                path = ptr + 1;
+                if (*ptr == '/' || *ptr == '\\')
+                {
+                    path = ptr + 1;
+                }
+            }
+            return path;
+        }
+
+        inline long long get_date_time()
+        {
+            auto now = std::chrono::system_clock::now();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        }
+
+        inline std::string print_date_time(long long ms_since_epoch)
+        {
+            char buff[30] = {0};
+            time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
+            tm time_info;
+            localtime_r(&sec_since_epoch, &time_info);
+            snprintf(buff, 30, "%04d%02d%02dT%02d%02d%02dS%03lld",
+                     1900 + time_info.tm_year, 1 + time_info.tm_mon, time_info.tm_mday,
+                     time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000);
+            return std::string(buff);
+        }
+
+        inline unsigned int get_thread_name()
+        {
+            return static_cast<unsigned int>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        }
+
+        inline const char *get_verbosity_name(int verbosity)
+        {
+            const char *name = nullptr;
+            if (verbosity <= -3)
+            {
+                name = "-3";
+            }
+            else if (verbosity == -2)
+            {
+                name = "-2";
+            }
+            else if (verbosity == -1)
+            {
+                name = "-1";
+            }
+            else if (verbosity == 0)
+            {
+                name = "0";
+            }
+
+            return name;
+        }
+
+        inline void print_thread_name(unsigned int thread_id, char *buffer, unsigned long long length, bool right_align_hex_id = true)
+        {
+            if (right_align_hex_id)
+            {
+                snprintf(buffer, static_cast<size_t>(length), "%*X", static_cast<int>(length - 1), thread_id);
+            }
+            else
+            {
+                snprintf(buffer, static_cast<size_t>(length), "%X", thread_id);
             }
         }
-        return path;
-    }
 
-    inline long long get_date_time()
-    {
-        auto now = std::chrono::system_clock::now();
-        return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    }
-
-    inline std::string print_date_time(long long ms_since_epoch)
-    {
-        char buff[30] = {0};
-        time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
-        tm time_info;
-        localtime_r(&sec_since_epoch, &time_info);
-        snprintf(buff, 30, "%04d%02d%02dT%02d%02d%02dS%03lld",
-                 1900 + time_info.tm_year, 1 + time_info.tm_mon, time_info.tm_mday,
-                 time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000);
-        return std::string(buff);
-    }
-
-    inline unsigned int get_thread_name()
-    {
-        return static_cast<unsigned int>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-    }
-
-    inline const char *get_verbosity_name(int verbosity)
-    {
-        const char *name = nullptr;
-        if (verbosity <= -3)
+        inline void print_preamble_header(char *out_buff, size_t out_buff_size)
         {
-            name = "-3";
-        }
-        else if (verbosity == -2)
-        {
-            name = "-2";
-        }
-        else if (verbosity == -1)
-        {
-            name = "-1";
-        }
-        else if (verbosity == 0)
-        {
-            name = "0";
-        }
-
-        return name;
-    }
-
-    inline void print_thread_name(unsigned int thread_id, char *buffer, unsigned long long length, bool right_align_hex_id = true)
-    {
-        if (right_align_hex_id)
-        {
-            snprintf(buffer, static_cast<size_t>(length), "%*X", static_cast<int>(length - 1), thread_id);
-        }
-        else
-        {
-            snprintf(buffer, static_cast<size_t>(length), "%X", thread_id);
-        }
-    }
-
-    inline void print_preamble_header(char *out_buff, size_t out_buff_size)
-    {
-        if (out_buff_size == 0)
-        {
-            return;
-        }
-        out_buff[0] = '\0';
-        size_t pos = 0;
-        auto update_bytes = [&pos](int bytes)
-        {
-            if (bytes > 0)
+            if (out_buff_size == 0)
             {
-                pos += bytes;
+                return;
             }
-        };
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "date       time         "));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "(   uptime) "));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "[%-*s]", REC_THREADNAME_WIDTH, "threadid"));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:line   ", REC_FILENAME_WIDTH, "file"));
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "   l |"));
-    }
-
-    // focus on thread safety.
-    inline void print_preamble(char *out_buff, size_t out_buff_size, int verbosity, const char *file, unsigned int line)
-    {
-        if (out_buff_size == 0)
-        {
-            return;
-        }
-        out_buff[0] = '\0';
-        long long ms_since_epoch = get_date_time();
-        time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
-        tm time_info;
-        localtime_r(&sec_since_epoch, &time_info);
-
-        auto uptime_ms = ms_since_epoch - RECLOG::RECONFIG::start_time;
-        auto uptime_sec = static_cast<double>(uptime_ms) / 1000.0;
-
-        char thread_name[REC_THREADNAME_WIDTH + 1] = {0};
-        print_thread_name(get_thread_name(), thread_name, REC_THREADNAME_WIDTH + 1, true);
-
-        const char *level_buff = get_verbosity_name(verbosity);
-
-        file = filename(file);
-
-        size_t pos = 0;
-
-        auto update_bytes = [&pos](int bytes)
-        {
-            if (bytes > 0)
+            out_buff[0] = '\0';
+            size_t pos = 0;
+            auto update_bytes = [&pos](int bytes)
             {
-                pos += bytes;
+                if (bytes > 0)
+                {
+                    pos += bytes;
+                }
+            };
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "date       time         "));
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "(   uptime) "));
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "[%-*s]", REC_THREADNAME_WIDTH, "threadid"));
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:line   ", REC_FILENAME_WIDTH, "file"));
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "   l |"));
+        }
+
+        // focus on thread safety.
+        inline void print_preamble(char *out_buff, size_t out_buff_size, int verbosity, const char *file, unsigned int line)
+        {
+            if (out_buff_size == 0)
+            {
+                return;
             }
-        };
+            out_buff[0] = '\0';
+            long long ms_since_epoch = get_date_time();
+            time_t sec_since_epoch = time_t(ms_since_epoch / 1000);
+            tm time_info;
+            localtime_r(&sec_since_epoch, &time_info);
 
-        // date-time
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%04d-%02d-%02d %02d:%02d:%02d.%03lld ",
-                              1900 + time_info.tm_year, 1 + time_info.tm_mon, time_info.tm_mday,
-                              time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000));
-        // update_time
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "(%8.3fs) ", uptime_sec));
-        // thread_id
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "[%-*s]", REC_THREADNAME_WIDTH, thread_name));
-        // file
-        char shortened_filename[REC_FILENAME_WIDTH + 1];
-        snprintf(shortened_filename, REC_FILENAME_WIDTH + 1, "%s", file);
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:%-6u ",
-                              REC_FILENAME_WIDTH, shortened_filename, line));
-        // level
-        update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%4s | ", level_buff));
-        // delimiter
-        // update_bytes(snprintf(out_buff + pos, out_buff_size - pos, " | "));
-    }
+            auto uptime_ms = ms_since_epoch - RECLOG::RECONFIG::start_time;
+            auto uptime_sec = static_cast<double>(uptime_ms) / 1000.0;
 
-    inline void print_header()
-    {
-        char preamble_explain[REC_PREAMBLE_WIDTH];
-        print_preamble_header(preamble_explain, sizeof(preamble_explain));
-        printf("%s\n", preamble_explain);
+            char thread_name[REC_THREADNAME_WIDTH + 1] = {0};
+            print_thread_name(get_thread_name(), thread_name, REC_THREADNAME_WIDTH + 1, true);
+
+            const char *level_buff = get_verbosity_name(verbosity);
+
+            file = filename(file);
+
+            size_t pos = 0;
+
+            auto update_bytes = [&pos](int bytes)
+            {
+                if (bytes > 0)
+                {
+                    pos += bytes;
+                }
+            };
+
+            // date-time
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%04d-%02d-%02d %02d:%02d:%02d.%03lld ",
+                                  1900 + time_info.tm_year, 1 + time_info.tm_mon, time_info.tm_mday,
+                                  time_info.tm_hour, time_info.tm_min, time_info.tm_sec, ms_since_epoch % 1000));
+            // update_time
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "(%8.3fs) ", uptime_sec));
+            // thread_id
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "[%-*s]", REC_THREADNAME_WIDTH, thread_name));
+            // file
+            char shortened_filename[REC_FILENAME_WIDTH + 1];
+            snprintf(shortened_filename, REC_FILENAME_WIDTH + 1, "%s", file);
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%*s:%-6u ",
+                                  REC_FILENAME_WIDTH, shortened_filename, line));
+            // level
+            update_bytes(snprintf(out_buff + pos, out_buff_size - pos, "%4s | ", level_buff));
+            // delimiter
+            // update_bytes(snprintf(out_buff + pos, out_buff_size - pos, " | "));
+        }
+
+        inline void print_header()
+        {
+            char preamble_explain[REC_PREAMBLE_WIDTH];
+            print_preamble_header(preamble_explain, sizeof(preamble_explain));
+            printf("%s\n", preamble_explain);
+        }
     }
-}
 #endif

@@ -4,6 +4,7 @@
 #include "reclog_impl.h"
 #include "test_tools.h"
 #include <thread>
+#include <iomanip>
 
 DEFINE_STRUCT(Point,
               (double)x,
@@ -266,6 +267,13 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     {
         thdvec[i].join();
     }
+}
+
+TEST(RECFILESYS, test_delete_dir)
+{
+    RECLOG::RECONFIG::InitREC();
+    RECLOG(log) << get_current_directory();
+    RECLOG(log) << std::boolalpha << create_directories(get_current_directory() + "/xtc");
 }
 
 /*
