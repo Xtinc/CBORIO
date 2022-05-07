@@ -269,11 +269,12 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     }
 }
 
-TEST(RECFILESYS, test_delete_dir)
+TEST(RECBORSTREAM, test)
 {
-    RECLOG::RECONFIG::InitREC();
-    RECLOG(log) << get_current_directory();
-    RECLOG(log) << std::boolalpha << create_directories(get_current_directory() + "/xtc");
+    cborio::cborstream cbs;
+    cbs << 1 << "A"
+        << "cekjadjak";
+    std::cout << cbs.u_str() << std::endl;
 }
 
 /*

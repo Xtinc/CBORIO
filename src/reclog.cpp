@@ -18,13 +18,24 @@ std::atomic_size_t RECLOG::RECONFIG::filesize_raw{0};
 std::string RECLOG::RECONFIG::rootname{""};
 RECLOG::FileQueue RECLOG::RECONFIG::filelist_cbor{};
 RECLOG::FileQueue RECLOG::RECONFIG::filelist_raw{};
+RECLOG::FilePtr RECLOG::RECONFIG::screenfile{};
 FunctionPool RECLOG::RECONFIG::g_copool(2);
 FunctionPool RECLOG::RECONFIG::g_expool(1);
 
 std::once_flag RECInitFlag;
 std::once_flag RECRawInitFlag;
 std::once_flag RECBORInitFlag;
+std::once_flag RECLOGInitFlag;
 // std::once_flag RECFileFlag[REC_MAX_FILENUM];
+
+class FileScreen : public RECLOG::FileBase
+{
+public:
+    size_t WriteData(const void *src, size_t, size_t) override
+    {
+        return fprintf(stdout, "%s\n", (char *)src);
+    }
+};
 
 class FileDisk : public RECLOG::FileBase
 {
@@ -356,6 +367,13 @@ RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
     return RECLOG::RECONFIG::filelist_cbor.back();
 }
 
+RECLOG::FilePtr &RECLOG::RECONFIG::GetCurLogFp()
+{
+    std::call_once(RECLOGInitFlag, []()
+                   { RECLOG::RECONFIG::screenfile.reset(new FileScreen()); });
+    return RECLOG::RECONFIG::screenfile;
+}
+
 void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
 {
     std::call_once(RECInitFlag, InitIMPL, RootName, Compressed);
@@ -385,8 +403,8 @@ RECLOG::RecLogger_raw::~RecLogger_raw()
 
 RECLOG::RecLogger_file::~RecLogger_file()
 {
-    en << get_date_time() << get_thread_name();
-    auto bytes_writed = m_pFile->WriteData(m_buf.data(), sizeof(unsigned char), m_buf.size());
+    cbs << get_date_time() << get_thread_name();
+    auto bytes_writed = m_pFile->WriteData(cbs.u_str().data(), sizeof(unsigned char), cbs.u_str().size());
     RECLOG::RECONFIG::filesize_cbor += bytes_writed;
 }
 
@@ -394,5 +412,7 @@ RECLOG::RecLogger_log::~RecLogger_log()
 {
     char preamble_buffer[REC_PREAMBLE_WIDTH];
     print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
-    printf("%s%s\n", preamble_buffer, m_ss.str().c_str());
+    auto content = m_ss.str().insert(0, preamble_buffer);
+    m_pFile->WriteData(content.c_str(), sizeof(char), content.size());
+    // printf("%s%s\n", preamble_buffer, m_ss.str().c_str());
 }

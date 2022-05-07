@@ -42,12 +42,14 @@ namespace RECLOG
         static bool g_compress;
         static FilePtr &GetCurFileFp();
         static FilePtr &GetCurRawFp();
+        static FilePtr &GetCurLogFp();
         static void InitREC(const char *filename = "", bool compressed = false);
         static void ExitREC();
 
     private:
         static FileQueue filelist_cbor;
         static FileQueue filelist_raw;
+        static FilePtr screenfile;
     };
 
     struct fLambdaFile;
@@ -103,49 +105,12 @@ namespace RECLOG
     class RecLogger_file
     {
     private:
-        class cborbuf : public cborio::output
-        {
-        private:
-            std::vector<unsigned char> m_buffer;
-
-        public:
-            cborbuf(unsigned int capacity)
-            {
-                m_buffer.reserve(capacity);
-            };
-
-            const unsigned char *data() const
-            {
-                return m_buffer.data();
-            }
-
-            size_t size() const
-            {
-                return m_buffer.size();
-            }
-
-            void clear() { return m_buffer.clear(); }
-
-            void put_byte(unsigned char value) override
-            {
-                m_buffer.emplace_back(value);
-            }
-
-            void put_bytes(const unsigned char *data, size_t size) override
-            {
-                for (size_t i = 0; i < size; ++i)
-                {
-                    m_buffer.emplace_back(*(data + i));
-                }
-            };
-        };
-        cborbuf m_buf;
-        cborio::encoder en;
+        cborio::cborstream cbs;
         FilePtr m_pFile;
 
     public:
         RecLogger_file(FilePtr fp)
-            : m_buf(4096), en(m_buf), m_pFile(fp) {}
+            : m_pFile(fp) {}
         ~RecLogger_file();
 
         template <typename T,
@@ -172,11 +137,11 @@ namespace RECLOG
         {
             if (*fieldName)
             {
-                en << fieldName << obj;
+                cbs << fieldName << obj;
             }
             else
             {
-                en << obj;
+                cbs << obj;
             }
         }
 
@@ -184,9 +149,9 @@ namespace RECLOG
                   typename std::enable_if<refl::IsReflected<typename std::decay<T>::type>::value>::type * = nullptr>
         void serializeObj(const T &obj, const char *fieldName = "")
         {
-            en << fieldName << '{';
+            cbs << fieldName << '{';
             refl::forEach(obj, RECLOG::fLambdaFile(*this));
-            en << '}';
+            cbs << '}';
         }
     };
 
@@ -197,10 +162,11 @@ namespace RECLOG
         unsigned int _line;
         int m_verbosity;
         std::ostringstream m_ss;
+        FilePtr m_pFile;
 
     public:
-        RecLogger_log(int verbosity, const char *file, unsigned line)
-            : _file(file), _line(line), m_verbosity(verbosity) {}
+        RecLogger_log(FilePtr fp, int verbosity, const char *file, unsigned line)
+            : _file(file), _line(line), m_verbosity(verbosity), m_pFile(fp) {}
         ~RecLogger_log();
 
         RecLogger_log(RecLogger_log &&other)
@@ -305,7 +271,7 @@ namespace RECLOG
     typename std::enable_if<std::is_same<T, RecLogger_log>::value, RecLogger_log>::type
     make_RecLogger(const char *file, unsigned line)
     {
-        return RecLogger_log(0, file, line);
+        return RecLogger_log(RECLOG::RECONFIG::GetCurLogFp(), 0, file, line);
     }
 }
 

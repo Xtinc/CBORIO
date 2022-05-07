@@ -4,6 +4,7 @@
 #include "templates.h"
 #include <cstdint>
 #include <sstream>
+#include <iomanip>
 
 namespace cborio
 {
@@ -15,6 +16,77 @@ namespace cborio
         virtual void put_byte(unsigned char value) = 0;
 
         virtual void put_bytes(const unsigned char *data, size_t size) = 0;
+    };
+
+    class ustring : public cborio::output
+    {
+    private:
+        std::vector<unsigned char> m_buffer;
+
+    public:
+        explicit ustring(unsigned int capacity)
+        {
+            m_buffer.reserve(capacity);
+        };
+
+        using iterator = std::vector<unsigned char>::iterator;
+        using const_iterator = std::vector<unsigned char>::const_iterator;
+
+        iterator begin()
+        {
+            return m_buffer.begin();
+        }
+
+        iterator end()
+        {
+            return m_buffer.end();
+        }
+
+        const_iterator cbegin() const
+        {
+            return m_buffer.cbegin();
+        }
+
+        const_iterator cend() const
+        {
+            return m_buffer.cend();
+        }
+
+        friend std::ostream &operator<<(std::ostream &os, const ustring &str)
+        {
+            os << std::setw(2) << std::setfill('0') << std::hex;
+            for (auto iter = str.cbegin(); iter != str.cend(); ++iter)
+            {
+                os << (int)(*iter);
+            }
+            os.clear();
+            return os;
+        }
+
+        const unsigned char *data() const
+        {
+            return m_buffer.data();
+        }
+
+        size_t size() const
+        {
+            return m_buffer.size();
+        }
+
+        void clear() { return m_buffer.clear(); }
+
+        void put_byte(unsigned char value) override
+        {
+            m_buffer.emplace_back(value);
+        }
+
+        void put_bytes(const unsigned char *data, size_t size) override
+        {
+            for (size_t i = 0; i < size; ++i)
+            {
+                m_buffer.emplace_back(*(data + i));
+            }
+        };
     };
 
     class encoder
@@ -129,6 +201,20 @@ namespace cborio
         void write_tag(const unsigned int tag);
         void write_special(int special);
         void write_undefined();
+    };
+
+    class cborstream : public encoder
+    {
+    public:
+        cborstream() : m_buf(4096), encoder(m_buf) {}
+        ~cborstream() {}
+        const ustring &u_str()
+        {
+            return m_buf;
+        }
+
+    private:
+        ustring m_buf;
     };
 
     void compress(std::istream &is, std::ostream &os);
