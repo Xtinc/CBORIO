@@ -13,27 +13,43 @@
 
 long long RECLOG::RECONFIG::start_time{0};
 bool RECLOG::RECONFIG::g_compress{false};
-std::atomic_size_t RECLOG::RECONFIG::filesize_cbor{0};
-std::atomic_size_t RECLOG::RECONFIG::filesize_raw{0};
-std::string RECLOG::RECONFIG::rootname{""};
-RECLOG::FileQueue RECLOG::RECONFIG::filelist_cbor{};
-RECLOG::FileQueue RECLOG::RECONFIG::filelist_raw{};
-RECLOG::FilePtr RECLOG::RECONFIG::screenfile{};
+RECLOG::FilePtr RECLOG::RECONFIG::screenfile{new FileBase()};
 FunctionPool RECLOG::RECONFIG::g_copool(2);
 FunctionPool RECLOG::RECONFIG::g_expool(1);
+RECLOG::DiskFileCluster RECLOG::RECONFIG::g_flist_cbor("", RECLOG::CodeType::CBOR);
+RECLOG::DiskFileCluster RECLOG::RECONFIG::g_flist_raw("", RECLOG::CodeType::RAW);
+RECLOG::DiskFileCluster RECLOG::RECONFIG::g_flist_log("", RECLOG::CodeType::LOG);
 
 std::once_flag RECInitFlag;
-std::once_flag RECRawInitFlag;
-std::once_flag RECBORInitFlag;
-std::once_flag RECLOGInitFlag;
-// std::once_flag RECFileFlag[REC_MAX_FILENUM];
 
 class FileScreen : public RECLOG::FileBase
 {
 public:
-    size_t WriteData(const void *src, size_t, size_t) override
+    size_t WriteData(const void *src, size_t ele, size_t len) override
     {
-        return fprintf(stdout, "%s\n", (char *)src);
+        for (size_t i = 0; i < ele * len; ++i)
+        {
+            printf("%02X", *((char *)src + i));
+        }
+        printf("\n");
+        fflush(stdout);
+        return ele * len;
+    }
+    
+    size_t WriteData(const std::string &str) override
+    {
+        return fprintf(stdout, "%s\n", str.c_str());
+    };
+    
+    size_t WriteData(const cborio::ustring &str) override
+    {
+        for (auto iter = str.cbegin(); iter != str.cend(); ++iter)
+        {
+            printf("%02X", *iter);
+        }
+        printf("\n");
+        fflush(stdout);
+        return str.size();
     }
 };
 
@@ -80,6 +96,16 @@ public:
         return m_fp == nullptr ? 0 : fwrite(src, ele_size, len, m_fp);
     }
 
+    size_t WriteData(const std::string &str) override
+    {
+        return m_fp == nullptr ? 0 : fwrite(str.c_str(), sizeof(char), str.size(), m_fp);
+    }
+
+    size_t WriteData(const cborio::ustring &ustr) override
+    {
+        return m_fp == nullptr ? 0 : fwrite(ustr.data(), sizeof(unsigned char), ustr.size(), m_fp);
+    }
+
     void SetTemp(bool temp) override
     {
         m_tempfile = temp;
@@ -89,42 +115,6 @@ private:
     bool m_tempfile;
     FILE *m_fp;
     std::string m_filename;
-};
-
-class FileNet : public RECLOG::FileBase, public std::enable_shared_from_this<FileNet>
-{
-public:
-    FileNet(const std::string &IPAdresser)
-    {
-        m_IPAdresser = IPAdresser;
-        m_buf.reserve(4096);
-    };
-    ~FileNet() {}
-
-    size_t WriteData(const void *src, size_t ele_size, size_t len) override
-    {
-        std::vector<char> content;
-        for (size_t idx = 0; idx < ele_size * len; ++idx)
-        {
-            content.emplace_back(*((char *)(src) + idx));
-        }
-        // RECLOG(log) << content;
-        RECLOG::RECONFIG::g_expool.post([content, self = shared_from_this()]()
-                                        { 
-                                            for(auto &i:content){
-                                                self->m_buf.emplace_back(i);
-                                            }
-                                            if(self->m_buf.size()>100000){
-                                                self->m_buf.clear();
-                                                RECLOG(log)<<"send data!";
-                                                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                                            } });
-        return 0;
-    }
-
-private:
-    std::string m_IPAdresser;
-    std::vector<char> m_buf;
 };
 
 #if __GNUC__
@@ -244,7 +234,7 @@ void signal_handler(int signal_number, siginfo_t *, void *)
     fprintf(err_fd, "%s", "********Readable MSGS:\n");
     fprintf(err_fd, "%s", err_pretty_message.c_str());
     // guaranteed on many situations.
-    RECLOG(log) << "REC caught a signal: " << signal_name << "\n"
+    RECLOG(STR) << "REC caught a signal: " << signal_name << "\n"
                 << err_pretty_message;
     // guaranteed on some situations.
     fclose(err_fd);
@@ -262,34 +252,84 @@ void install_signal_handlers()
 
     if (sigaction(SIGABRT, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGABRT";
+        RECLOG(STR) << "Failed to install handler for SIGABRT";
     }
     if (sigaction(SIGBUS, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGBUS";
+        RECLOG(STR) << "Failed to install handler for SIGBUS";
     }
     if (sigaction(SIGFPE, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGFPE";
+        RECLOG(STR) << "Failed to install handler for SIGFPE";
     }
     if (sigaction(SIGILL, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGILL";
+        RECLOG(STR) << "Failed to install handler for SIGILL";
     }
     if (sigaction(SIGINT, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGINT";
+        RECLOG(STR) << "Failed to install handler for SIGINT";
     }
     if (sigaction(SIGSEGV, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGSEGV";
+        RECLOG(STR) << "Failed to install handler for SIGSEGV";
     }
     if (sigaction(SIGTERM, &sig_action, NULL) != 0)
     {
-        RECLOG(log) << "Failed to install handler for SIGTERM";
+        RECLOG(STR) << "Failed to install handler for SIGTERM";
     }
 }
 #endif
+
+std::string RECLOG::DiskFileCluster::GetCurFileName()
+{
+    std::string filename = m_rootname + print_date_time(get_date_time());
+    switch (m_ftype)
+    {
+    case CodeType::CBOR:
+        filename += ".cbor";
+        break;
+    case CodeType::LOG:
+        filename += ".log";
+        break;
+    case CodeType::RAW:
+        filename += ".dat";
+        break;
+    default:
+        break;
+    };
+    return filename;
+}
+
+RECLOG::FilePtr &RECLOG::DiskFileCluster::GetCurFileFp()
+{
+    std::call_once(m_fg, [&]()
+                   { m_filelist.push(std::move(std::make_shared<FileDisk>(GetCurFileName()))); });
+    size_t old_value = m_filesize.load();
+    bool size_reset = false;
+    do
+    {
+        if (old_value < REC_MAX_FILESIZE)
+        {
+            break;
+        }
+        size_reset = m_filesize.compare_exchange_weak(old_value, 0);
+        if (size_reset)
+        {
+            m_filelist.push(std::move(std::make_shared<FileDisk>(GetCurFileName())));
+            if (m_filelist.size() > REC_MAX_FILENUM)
+            {
+                m_filelist.pop();
+            }
+        }
+    } while (!size_reset);
+    return m_filelist.back();
+}
+
+RECLOG::FilePtr &RECLOG::RECONFIG::GetCurLogFp()
+{
+    return RECLOG::RECONFIG::screenfile;
+}
 
 void InitIMPL(const char *filename, bool Compressed)
 {
@@ -297,81 +337,19 @@ void InitIMPL(const char *filename, bool Compressed)
     install_signal_handlers();
 #endif
     RECLOG::RECONFIG::start_time = get_date_time();
+    RECLOG::RECONFIG::GetCurLogFp().reset(new FileScreen());
     if (strlen(filename) != 0)
     {
         RECLOG::RECONFIG::g_compress = Compressed;
-        RECLOG::RECONFIG::rootname = filename;
+        RECLOG::RECONFIG::g_flist_cbor.SetRootName(filename);
+        RECLOG::RECONFIG::g_flist_log.SetRootName(filename);
+        RECLOG::RECONFIG::g_flist_raw.SetRootName(filename);
     }
     else
     {
         print_header();
     }
     atexit(RECLOG::RECONFIG::ExitREC);
-}
-
-void GenerateNewFile(RECLOG::FileQueue &flist, bool encoded)
-{
-    std::string filename = encoded ? ".cbor" : ".dat";
-    filename = RECLOG::RECONFIG::rootname + print_date_time(get_date_time()) + filename;
-    flist.push(std::move(std::make_shared<FileDisk>(filename)));
-    if (flist.size() > REC_MAX_FILENUM)
-    {
-        flist.pop();
-    }
-}
-
-RECLOG::FilePtr &RECLOG::RECONFIG::GetCurRawFp()
-{
-    std::call_once(RECRawInitFlag, []()
-                   {
-        std::string filename = RECLOG::RECONFIG::rootname+print_date_time(get_date_time())+".dat";
-        RECLOG::RECONFIG::filelist_raw.push(std::move(std::make_shared<FileDisk>(filename))); });
-
-    size_t old_value = RECLOG::RECONFIG::filesize_raw.load();
-    bool size_reset = false;
-    do
-    {
-        if (old_value < REC_MAX_FILESIZE)
-        {
-            break;
-        }
-        size_reset = RECLOG::RECONFIG::filesize_raw.compare_exchange_weak(old_value, 0);
-        if (size_reset)
-        {
-            GenerateNewFile(RECLOG::RECONFIG::filelist_raw, false);
-        }
-    } while (!size_reset);
-    return RECLOG::RECONFIG::filelist_raw.back();
-}
-
-RECLOG::FilePtr &RECLOG::RECONFIG::GetCurFileFp()
-{
-    std::call_once(RECBORInitFlag, []()
-                   {
-        std::string filename = RECLOG::RECONFIG::rootname+print_date_time(get_date_time())+".cbor";
-        RECLOG::RECONFIG::filelist_cbor.push(std::move(std::make_shared<FileDisk>(filename))); });
-    size_t old_value = RECLOG::RECONFIG::filesize_cbor.load();
-    bool size_reset = false;
-    do
-    {
-        if (old_value < REC_MAX_FILESIZE)
-        {
-            break;
-        }
-        size_reset = RECLOG::RECONFIG::filesize_cbor.compare_exchange_weak(old_value, 0);
-        if (size_reset)
-        {
-            GenerateNewFile(RECLOG::RECONFIG::filelist_cbor, true);
-        }
-    } while (!size_reset);
-    return RECLOG::RECONFIG::filelist_cbor.back();
-}
-
-RECLOG::FilePtr &RECLOG::RECONFIG::GetCurLogFp()
-{
-    std::call_once(RECLOGInitFlag, []()
-                   { RECLOG::RECONFIG::screenfile.reset(new FileScreen()); });
-    return RECLOG::RECONFIG::screenfile;
 }
 
 void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
@@ -381,38 +359,39 @@ void RECLOG::RECONFIG::InitREC(const char *RootName, bool Compressed)
 
 void RECLOG::RECONFIG::ExitREC()
 {
-    auto &queue = RECLOG::RECONFIG::filelist_cbor;
-    while (!queue.empty())
-    {
-        queue.front()->SetTemp(false);
-        queue.pop();
-    }
-    queue = RECLOG::RECONFIG::filelist_raw;
-    while (!queue.empty())
-    {
-        queue.front()->SetTemp(false);
-        queue.pop();
-    }
+    RECLOG::RECONFIG::g_flist_cbor.AtExit();
+    RECLOG::RECONFIG::g_flist_log.AtExit();
+    RECLOG::RECONFIG::g_flist_raw.AtExit();
 }
 
-RECLOG::RecLogger_raw::~RecLogger_raw()
+RECLOG::Codec_RAW::~Codec_RAW()
 {
-    auto bytes_writed = m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().size());
-    RECLOG::RECONFIG::filesize_raw += bytes_writed;
+    auto bytes_writed = m_pFile->WriteData(m_ss.str().c_str(), sizeof(char), m_ss.str().length());
+    if (m_counted)
+    {
+        RECLOG::RECONFIG::g_flist_raw.IncraeseBytes(bytes_writed);
+    }
 }
 
-RECLOG::RecLogger_file::~RecLogger_file()
+RECLOG::Codec_CBO::~Codec_CBO()
 {
     cbs << get_date_time() << get_thread_name();
-    auto bytes_writed = m_pFile->WriteData(cbs.u_str().data(), sizeof(unsigned char), cbs.u_str().size());
-    RECLOG::RECONFIG::filesize_cbor += bytes_writed;
+    auto bytes_writed = m_pFile->WriteData(cbs.u_str());
+    if (m_counted)
+    {
+        RECLOG::RECONFIG::g_flist_cbor.IncraeseBytes(bytes_writed);
+    }
 }
 
-RECLOG::RecLogger_log::~RecLogger_log()
+RECLOG::Codec_STR::~Codec_STR()
 {
     char preamble_buffer[REC_PREAMBLE_WIDTH];
     print_preamble(preamble_buffer, sizeof(preamble_buffer), m_verbosity, _file, _line);
     auto content = m_ss.str().insert(0, preamble_buffer);
-    m_pFile->WriteData(content.c_str(), sizeof(char), content.size());
+    auto bytes_writed = m_pFile->WriteData(content);
+    if (m_counted)
+    {
+        RECLOG::RECONFIG::g_flist_cbor.IncraeseBytes(bytes_writed);
+    }
     // printf("%s%s\n", preamble_buffer, m_ss.str().c_str());
 }

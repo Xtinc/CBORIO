@@ -127,7 +127,7 @@ TEST_F(RECLOG_TestCase, sio_time)
     for (int i = 0; i < 100; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        RECLOG(log) << print_date_time(get_date_time());
+        RECLOG(STR) << print_date_time(get_date_time());
     }
 }
 
@@ -135,7 +135,7 @@ TEST_F(RECLOG_TestCase, sio_thread)
 {
     char *td = new char[50];
     print_thread_name(get_thread_name(), td, 50);
-    RECLOG(log) << td;
+    RECLOG(STR) << td;
     delete[] td;
 }
 
@@ -146,19 +146,19 @@ TEST_F(RECLOG_TestCase, log_format)
     float little2 = 1.5;
     float whole = 4.00000;
 
-    RECLOG(log) << "Some values with noshowpoint (the default)";
+    RECLOG(STR) << "Some values with noshowpoint (the default)";
 
-    RECLOG(log) << "lots:    " << lots;
-    RECLOG(log) << "little1: " << little1;
-    RECLOG(log) << "little2: " << little2;
-    RECLOG(log) << "whole:   " << whole;
+    RECLOG(STR) << "lots:    " << lots;
+    RECLOG(STR) << "little1: " << little1;
+    RECLOG(STR) << "little2: " << little2;
+    RECLOG(STR) << "whole:   " << whole;
 
-    RECLOG(log) << "The same values with showpoint";
+    RECLOG(STR) << "The same values with showpoint";
 
-    RECLOG(log) << "lots:    " << std::showpoint << lots;
-    RECLOG(log) << "little1: " << std::showpoint << little1;
-    RECLOG(log) << "little2: " << std::showpoint << little2;
-    RECLOG(log) << "whole:   " << std::showpoint << whole;
+    RECLOG(STR) << "lots:    " << std::showpoint << lots;
+    RECLOG(STR) << "little1: " << std::showpoint << little1;
+    RECLOG(STR) << "little2: " << std::showpoint << little2;
+    RECLOG(STR) << "whole:   " << std::showpoint << whole;
 }
 
 TEST_F(RECLOG_TestCase, sio_func)
@@ -169,7 +169,7 @@ TEST_F(RECLOG_TestCase, sio_func)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG(log) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb << tesi;
+        RECLOG(STR) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb << tesi;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond per log.\n", elapsed / 10.0);
@@ -178,7 +178,7 @@ TEST_F(RECLOG_TestCase, sio_func)
 TEST_F(RECLOG_TestCase, sio_speed)
 {
     test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                     { RECLOG(log) << stw; });
+                     { RECLOG(STR) << stw; });
 }
 
 TEST_F(RECLOG_TestCase, sio_speed_md)
@@ -188,7 +188,7 @@ TEST_F(RECLOG_TestCase, sio_speed_md)
     {
         thdvec.emplace_back([this]()
                             { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                                               { RECLOG(log) << stw; }); });
+                                               { RECLOG(STR) << stw; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
     {
@@ -204,7 +204,7 @@ TEST_F(RECFILE_TestCase, fio_func)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG(file) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb << tesi;
+        RECLOG(CBO) << tcb << "cessjo" << 1 << 5.599 << -1 << ces << tcb << tesi;
     }
     double elapsed = timer.elapsed();
     printf("%.2lf usecond per log.\n", elapsed / 10.0);
@@ -213,7 +213,7 @@ TEST_F(RECFILE_TestCase, fio_func)
 TEST_F(RECFILE_TestCase, fio_speed)
 {
     test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                     { RECLOG(file) << stw; });
+                     { RECLOG(CBO) << stw; });
 }
 
 TEST_F(RECFILE_TestCase, fio_speed_md)
@@ -223,7 +223,7 @@ TEST_F(RECFILE_TestCase, fio_speed_md)
     {
         thdvec.emplace_back([this]()
                             { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                                               { RECLOG(file) << stw; }); });
+                                               { RECLOG(CBO) << stw; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
     {
@@ -240,7 +240,7 @@ TEST_F(RECRAW_TestCase, raw_func)
     Timer timer;
     for (int i = 0; i < 10000; ++i)
     {
-        RECLOG(raw) << tcb.a << tcb.b << str << 1 << 5.599
+        RECLOG(RAW) << tcb.a << tcb.b << str << 1 << 5.599
                     << -1 << ces << tcb.a << tcb.b << tesi.a << tesi.b
                     << tesi.c << tesi.d;
     }
@@ -251,7 +251,7 @@ TEST_F(RECRAW_TestCase, raw_func)
 TEST_F(RECRAW_TestCase, raw_speed)
 {
     test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                     { RECLOG(raw) << stw.num_b << stw.str_a; });
+                     { RECLOG(RAW) << stw.num_b << stw.str_a; });
 }
 
 TEST_F(RECRAW_TestCase, raw_speed_md)
@@ -261,7 +261,7 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
     {
         thdvec.emplace_back([this]()
                             { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
-                                               { RECLOG(raw) << stw.num_b << stw.str_a; }); });
+                                               { RECLOG(RAW) << stw.num_b << stw.str_a; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
     {
@@ -271,10 +271,10 @@ TEST_F(RECRAW_TestCase, raw_speed_md)
 
 TEST(RECBORSTREAM, test)
 {
-    cborio::cborstream cbs;
-    cbs << 1 << "A"
-        << "cekjadjak";
-    std::cout << cbs.u_str() << std::endl;
+    RECLOG::RECONFIG::InitREC("st");
+    RECFILE(STR) << 1 << "A";
+    RECFILE(CBO) << 1 << "A";
+    RECFILE(RAW) << 1 << "A";
 }
 
 /*
