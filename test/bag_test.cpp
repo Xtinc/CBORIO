@@ -61,7 +61,7 @@ class RECFILE_TestCase : public ::testing::Test
 public:
     RECFILE_TestCase()
     {
-        RECLOG::RECONFIG::InitREC("st", true);
+        RECLOG::RECONFIG::InitREC("st");
         generate_rnd_str(strlist, cnt);
     }
     std::vector<STRWNUM> strlist;
@@ -224,6 +224,21 @@ TEST_F(RECFILE_TestCase, fio_speed_md)
         thdvec.emplace_back([this]()
                             { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
                                                { RECLOG(CBO) << stw; }); });
+    }
+    for (size_t i = 0; i < thdvec.size(); ++i)
+    {
+        thdvec[i].join();
+    }
+}
+
+TEST_F(RECFILE_TestCase, fio_speed_md2)
+{
+    std::vector<std::thread> thdvec;
+    for (size_t i = 0; i < 4; ++i)
+    {
+        thdvec.emplace_back([this]()
+                            { test_print_speed(strlist, cnt, [](const STRWNUM &stw)
+                                               { RECFILE(CBO) << stw; }); });
     }
     for (size_t i = 0; i < thdvec.size(); ++i)
     {

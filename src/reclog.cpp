@@ -106,7 +106,7 @@ public:
         return m_fp == nullptr ? 0 : fwrite(ustr.data(), sizeof(unsigned char), ustr.size(), m_fp);
     }
 
-    void SetTemp(bool temp) override
+    void Mark(bool temp) override
     {
         m_tempfile = temp;
     }

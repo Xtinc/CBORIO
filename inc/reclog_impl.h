@@ -16,27 +16,7 @@ namespace
     constexpr int REC_FILENAME_WIDTH = 23;
     constexpr int REC_PREAMBLE_WIDTH = 54 + REC_THREADNAME_WIDTH + REC_FILENAME_WIDTH;
     constexpr int REC_MAX_FILENUM = 12;
-    constexpr size_t REC_MAX_FILESIZE = 500000000;
-
-    inline std::string get_current_directory()
-    {
-        char pwd[1024] = {0};
-#if _WIN32
-#define getcwd _getcwd
-#endif
-        getcwd(pwd, sizeof(pwd));
-        return pwd;
-    }
-
-    inline bool create_directories(const std::string &file_path_const)
-    {
-        const char *file_path = file_path_const.c_str();
-
-#ifdef _WIN32
-#define mkdir _mkdir
-#endif
-        return mkdir(file_path) == 0;
-    }
+    constexpr size_t REC_MAX_FILESIZE = 500000;
 
     inline const char *filename(const char *path)
     {

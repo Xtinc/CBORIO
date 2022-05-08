@@ -27,7 +27,7 @@ namespace RECLOG
     public:
         FileBase(){};
         virtual ~FileBase(){};
-        virtual void SetTemp(bool){};
+        virtual void Mark(bool){};
         virtual size_t WriteData(const std::string &)
         {
             return 0;
@@ -60,7 +60,7 @@ namespace RECLOG
         {
             while (!m_filelist.empty())
             {
-                m_filelist.front()->SetTemp(false);
+                m_filelist.front()->Mark(false);
                 m_filelist.pop();
             }
         }
