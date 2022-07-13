@@ -59,17 +59,6 @@ TEST_F(CBOR_O_TestCase, signed_int)
     // 0x1864,0x193e8,0x192710,0x1a0186a0,0x3863,0x3A0001869F,0x3A053D9937
 }
 
-TEST_F(CBOR_O_TestCase, signed_ll)
-{
-
-    for (auto i : {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285})
-    {
-        en.write_data(i);
-        std::cout << std::endl;
-    }
-    // 0x1AB2D05E00,0x1B00000069543B2773,0x1B00000FEE240E457A,0x1B060BD73237F24857,0x3B03CFB11003748FA4
-}
-
 TEST_F(CBOR_O_TestCase, float_num)
 {
 
@@ -193,16 +182,6 @@ TEST_F(CBOR_I_TestCase, signed_int)
     RO_DECODER_RUN
 }
 
-TEST_F(CBOR_I_TestCase, signed_ll)
-{
-    RO_DECODER_CLS
-    for (auto i : {3000000000, 452384728947, 17515481548154, 435678399658346583, -274632784628453285})
-    {
-        en.write_data(i);
-    }
-    RO_DECODER_RUN
-}
-
 TEST_F(CBOR_I_TestCase, float_num)
 {
     RO_DECODER_CLS
@@ -286,20 +265,12 @@ TEST_F(CBOR_I_TestCase, streami)
     en << std::list<int>(10, 1919);
     RO_DECODER_RUN
 }
-
-struct ReflStructTest
-{
-    int x;
-    int y;
-};
-
-REFL(ReflStructTest, FIELD(x), FIELD(y));
 struct Point
 {
     int x, y;
 };
 
-REFL(Point, FIELD(x), FIELD(y));
+REFL(Point, FIELD(Point, x), FIELD(Point, y));
 
 struct Rect
 {
@@ -307,7 +278,7 @@ struct Rect
     uint32_t color;
 };
 
-REFL(Rect, FIELD(p1), FIELD(p2), FIELD(color));
+REFL(Rect, FIELD(Rect, p1), FIELD(Rect, p2), FIELD(Rect, color));
 
 TEST(CRUDE_REFL, static_test)
 {
